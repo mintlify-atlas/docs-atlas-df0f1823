@@ -1,0 +1,311 @@
+---
+title: React
+description: Learn how to integrate Algorand wallets in React applications using the use-wallet-react adapter.
+---
+
+The `@txnlab/use-wallet-react` package provides React-specific bindings for use-wallet, including a context provider and hooks that enable reactive wallet integration in React applications.
+
+## Installation
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install @txnlab/use-wallet-react
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add @txnlab/use-wallet-react
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add @txnlab/use-wallet-react
+    ```
+  </Tab>
+</Tabs>
+
+## Setup
+
+### Configure wallet manager
+
+Create a `WalletManager` instance with your desired wallet providers and network configuration, then wrap your app with the `WalletProvider` component.
+
+```tsx
+import {
+  NetworkId,
+  WalletId,
+  WalletManager,
+  WalletProvider
+} from '@txnlab/use-wallet-react'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.DEFLY,
+    WalletId.PERA,
+    WalletId.EXODUS,
+    {
+      id: WalletId.WALLETCONNECT,
+      options: { projectId: 'YOUR_PROJECT_ID' }
+    },
+    WalletId.KMD
+  ],
+  defaultNetwork: NetworkId.TESTNET
+})
+
+function App() {
+  return (
+    <WalletProvider manager={walletManager}>
+      {/* Your app components */}
+    </WalletProvider>
+  )
+}
+```
+
+## Using the wallet hook
+
+The `useWallet` hook provides access to wallet state and signing methods.
+
+### Basic usage
+
+```tsx
+import { useWallet } from '@txnlab/use-wallet-react'
+
+function ConnectButton() {
+  const { wallets, activeAddress } = useWallet()
+
+  return (
+    <div>
+      {activeAddress ? (
+        <p>Connected: {activeAddress}</p>
+      ) : (
+        <div>
+          {wallets.map((wallet) => (
+            <button
+              key={wallet.id}
+              onClick={() => wallet.connect()}
+              disabled={wallet.isConnected}
+            >
+              Connect {wallet.metadata.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+### Return values
+
+The `useWallet` hook returns the following properties:
+
+```typescript
+interface UseWalletReturn {
+  // Wallet state
+  wallets: Wallet[]
+  isReady: boolean
+  activeWallet: Wallet | null
+  activeWalletAccounts: WalletAccount[] | null
+  activeWalletAddresses: string[] | null
+  activeAccount: WalletAccount | null
+  activeAddress: string | null
+
+  // Algod client
+  algodClient: algosdk.Algodv2
+  setAlgodClient: (client: algosdk.Algodv2) => void
+
+  // Signing methods
+  signTransactions: (txnGroup: Transaction[] | Uint8Array[], indexesToSign?: number[]) => Promise<(Uint8Array | null)[]>
+  transactionSigner: (txnGroup: Transaction[], indexesToSign: number[]) => Promise<Uint8Array[]>
+  signData: (data: string, metadata: SignMetadata) => Promise<SignDataResponse>
+  withPrivateKey: <T>(callback: (secretKey: Uint8Array) => Promise<T>) => Promise<T>
+}
+```
+
+### Wallet interface
+
+Each wallet object in the `wallets` array has the following properties:
+
+```typescript
+interface Wallet {
+  id: WalletId
+  walletKey: WalletKey
+  metadata: WalletMetadata
+  accounts: WalletAccount[]
+  activeAccount: WalletAccount | null
+  isConnected: boolean
+  isActive: boolean
+  canSignData: boolean
+  canUsePrivateKey: boolean
+  connect: (args?: Record<string, any>) => Promise<WalletAccount[]>
+  disconnect: () => Promise<void>
+  setActive: () => void
+  setActiveAccount: (address: string) => void
+}
+```
+
+## Signing transactions
+
+The `transactionSigner` method is compatible with the Algorand SDK's `AtomicTransactionComposer`.
+
+```tsx
+import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
+
+function SendTransaction() {
+  const { activeAddress, algodClient, transactionSigner } = useWallet()
+
+  const sendTransaction = async () => {
+    if (!activeAddress) {
+      throw new Error('No active account')
+    }
+
+    const atc = new algosdk.AtomicTransactionComposer()
+    const suggestedParams = await algodClient.getTransactionParams().do()
+
+    const transaction = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: activeAddress,
+      receiver: activeAddress,
+      amount: 0,
+      suggestedParams
+    })
+
+    atc.addTransaction({ txn: transaction, signer: transactionSigner })
+
+    const result = await atc.execute(algodClient, 4)
+    console.log('Transaction sent:', result.txIDs)
+  }
+
+  return (
+    <button onClick={sendTransaction} disabled={!activeAddress}>
+      Send Transaction
+    </button>
+  )
+}
+```
+
+## Network management
+
+The `useNetwork` hook provides methods for managing network configuration.
+
+```tsx
+import { useNetwork } from '@txnlab/use-wallet-react'
+
+function NetworkSelector() {
+  const { activeNetwork, setActiveNetwork } = useNetwork()
+
+  return (
+    <div>
+      <p>Current network: {activeNetwork}</p>
+      <button onClick={() => setActiveNetwork('mainnet')}>
+        Switch to MainNet
+      </button>
+      <button onClick={() => setActiveNetwork('testnet')}>
+        Switch to TestNet
+      </button>
+    </div>
+  )
+}
+```
+
+### Return values
+
+```typescript
+interface UseNetworkReturn {
+  activeNetwork: string
+  networkConfig: Record<string, NetworkConfig>
+  activeNetworkConfig: NetworkConfig
+  setActiveNetwork: (networkId: NetworkId | string) => Promise<void>
+  updateAlgodConfig: (networkId: string, config: Partial<AlgodConfig>) => void
+  resetNetworkConfig: (networkId: string) => void
+}
+```
+
+## Managing accounts
+
+Switch between accounts for a connected wallet:
+
+```tsx
+import { useWallet } from '@txnlab/use-wallet-react'
+
+function AccountSelector() {
+  const { activeWallet } = useWallet()
+
+  if (!activeWallet || !activeWallet.isConnected) {
+    return null
+  }
+
+  return (
+    <select
+      value={activeWallet.activeAccount?.address || ''}
+      onChange={(e) => activeWallet.setActiveAccount(e.target.value)}
+    >
+      {activeWallet.accounts.map((account) => (
+        <option key={account.address} value={account.address}>
+          {account.address}
+        </option>
+      ))}
+    </select>
+  )
+}
+```
+
+## Signing arbitrary data
+
+For wallets that support it, you can sign arbitrary data for authentication:
+
+```tsx
+import { useWallet, ScopeType } from '@txnlab/use-wallet-react'
+
+function AuthButton() {
+  const { activeAddress, signData, activeWallet } = useWallet()
+
+  const authenticate = async () => {
+    if (!activeAddress || !activeWallet?.canSignData) {
+      throw new Error('Wallet does not support data signing')
+    }
+
+    const message = { domain: window.location.host, timestamp: Date.now() }
+    const data = btoa(JSON.stringify(message))
+    const metadata = { scope: ScopeType.AUTH, encoding: 'base64' }
+
+    const response = await signData(data, metadata)
+    console.log('Signature:', response)
+  }
+
+  return (
+    <button
+      onClick={authenticate}
+      disabled={!activeWallet?.canSignData}
+    >
+      Authenticate
+    </button>
+  )
+}
+```
+
+## TypeScript support
+
+The package includes full TypeScript definitions. All hooks and components are fully typed:
+
+```tsx
+import type {
+  Wallet,
+  WalletAccount,
+  WalletMetadata,
+  SignMetadata,
+  SignDataResponse
+} from '@txnlab/use-wallet-react'
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Learn about wallet and network configuration options
+  </Card>
+  <Card title="Wallets" icon="wallet" href="/wallets">
+    Explore supported wallet providers and their options
+  </Card>
+</CardGroup>

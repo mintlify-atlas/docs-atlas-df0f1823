@@ -1,122 +1,120 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "use-wallet",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#00D1B2",
+    "light": "#7FDFCC",
+    "dark": "#009B7D"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/TxnLab/use-wallet"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/TxnLab/use-wallet"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "core/wallet-manager",
+              "core/supported-wallets",
+              "core/network-configuration",
+              "core/state-management"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Framework Adapters",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "frameworks/react",
+              "frameworks/vue",
+              "frameworks/solid",
+              "frameworks/svelte"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Guides",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/connect-wallet",
+              "guides/signing-transactions",
+              "guides/signing-data",
+              "guides/switching-networks",
+              "guides/runtime-configuration",
+              "guides/testing-mnemonic",
+              "guides/private-keys",
+              "guides/custom-provider",
+              "guides/migration-v3"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/examples",
+              "resources/algokit-templates"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core API",
             "pages": [
-              "api-reference/introduction"
+              "api/wallet-manager",
+              "api/base-wallet",
+              "api/network-config",
+              "api/types"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Framework Hooks",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/use-wallet",
+              "api/use-network"
+            ]
+          },
+          {
+            "group": "Wallet Providers",
+            "pages": [
+              "api/wallets/pera",
+              "api/wallets/defly",
+              "api/wallets/exodus",
+              "api/wallets/walletconnect",
+              "api/wallets/lute",
+              "api/wallets/kibisis",
+              "api/wallets/kmd",
+              "api/wallets/web3auth",
+              "api/wallets/magic",
+              "api/wallets/mnemonic",
+              "api/wallets/custom"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "api/secure-key"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

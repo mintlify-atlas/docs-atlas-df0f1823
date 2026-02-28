@@ -1,0 +1,201 @@
+---
+title: WalletConnect
+description: API reference for the WalletConnect provider in use-wallet
+---
+
+The WalletConnect provider enables integration with any wallet that supports the WalletConnect v2 protocol for Algorand.
+
+## Installation
+
+Install the required peer dependencies:
+
+```bash
+npm install @walletconnect/modal @walletconnect/sign-client
+```
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.WALLETCONNECT,
+      options: { projectId: 'YOUR_PROJECT_ID' }
+    }
+  ]
+})
+```
+
+## Configuration
+
+### Required options
+
+<ParamField path="projectId" type="string" required>
+  Your WalletConnect Cloud project ID. Get one at [WalletConnect Cloud](https://cloud.walletconnect.com/).
+</ParamField>
+
+### Optional options
+
+<ParamField path="relayUrl" type="string" optional default="wss://relay.walletconnect.com">
+  Custom relay server URL.
+</ParamField>
+
+<ParamField path="metadata" type="SignClientTypes.Metadata" optional>
+  Custom metadata for your dApp displayed in wallet connection prompts.
+  
+  **Properties:**
+  - `name`: dApp name
+  - `description`: dApp description
+  - `url`: dApp URL
+  - `icons`: Array of icon URLs
+</ParamField>
+
+<ParamField path="enableExplorer" type="boolean" optional default="true">
+  Show the wallet explorer in the connection modal.
+</ParamField>
+
+<ParamField path="explorerRecommendedWalletIds" type="string[]" optional>
+  Array of wallet IDs to recommend in the explorer.
+</ParamField>
+
+<ParamField path="privacyPolicyUrl" type="string" optional>
+  URL to your privacy policy.
+</ParamField>
+
+<ParamField path="termsOfServiceUrl" type="string" optional>
+  URL to your terms of service.
+</ParamField>
+
+<ParamField path="themeMode" type="'light' | 'dark' | 'auto'" optional default="'auto'">
+  Theme mode for the WalletConnect modal.
+</ParamField>
+
+<ParamField path="themeVariables" type="Record<string, string>" optional>
+  Custom CSS variables for theming the modal.
+</ParamField>
+
+<ParamField path="skin" type="string | WalletConnectSkin" optional>
+  Apply a custom skin to this WalletConnect instance. Can be a built-in skin ID (e.g., 'biatec') or a custom skin object with `id`, `name`, and `icon` properties.
+  
+  When a skin is applied, the wallet uses the skin's metadata and a unique wallet key for state isolation.
+</ParamField>
+
+## Type definitions
+
+```typescript
+export interface WalletConnectOptions {
+  // Required
+  projectId: string
+  
+  // Optional sign client options
+  relayUrl?: string
+  metadata?: SignClientTypes.Metadata
+  
+  // Optional modal options
+  enableExplorer?: boolean
+  explorerRecommendedWalletIds?: string[]
+  privacyPolicyUrl?: string
+  termsOfServiceUrl?: string
+  themeMode?: 'light' | 'dark' | 'auto'
+  themeVariables?: Record<string, string>
+  
+  // Skin support
+  skin?: WalletConnectSkinOption
+}
+
+interface SignClientTypes.Metadata {
+  name: string
+  description: string
+  url: string
+  icons: string[]
+}
+```
+
+## Features
+
+### Universal wallet support
+
+Connect to any Algorand wallet that supports WalletConnect v2, including mobile wallets, browser extensions, and desktop applications.
+
+### QR code connection
+
+Displays a QR code for mobile wallet connection. Users scan the code with their mobile wallet to establish a connection.
+
+### Skin support
+
+Use the `skin` option to customize the appearance and branding of WalletConnect instances. This allows multiple WalletConnect-based wallets with different identities.
+
+```typescript
+{
+  id: WalletId.WALLETCONNECT,
+  options: {
+    projectId: 'YOUR_PROJECT_ID',
+    skin: 'biatec'  // or { id: 'custom', name: 'My Wallet', icon: '...' }
+  }
+}
+```
+
+### Automatic metadata detection
+
+If no metadata is provided, WalletConnect automatically detects your dApp's metadata from the HTML document (title, description, favicon).
+
+## Methods
+
+### connect()
+
+Initiates WalletConnect session. Opens the WalletConnect modal with QR code.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects the WalletConnect session and closes the modal.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions via the connected wallet. The wallet will prompt the user for approval.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+## Session management
+
+WalletConnect v2 sessions persist across page reloads. Sessions are stored in the browser's localStorage and automatically restored when the app initializes.
+
+## Network configuration
+
+WalletConnect uses CAIP-2 chain IDs. Ensure your network configuration includes the `caipChainId` property:
+
+```typescript
+const walletManager = new WalletManager({
+  wallets: [{ id: WalletId.WALLETCONNECT, options: { projectId: 'YOUR_PROJECT_ID' } }],
+  network: 'testnet'  // or custom NetworkConfig with caipChainId
+})
+```
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Full support (via QR code scanning)
+- **Desktop:** Full support
+
+## Troubleshooting
+
+### Missing project ID error
+
+Ensure you've created a project at [WalletConnect Cloud](https://cloud.walletconnect.com/) and provided the project ID in the options.
+
+### Network not supported
+
+Verify that your network configuration includes a valid `caipChainId`. The library includes CAIP chain IDs for MainNet, TestNet, BetaNet, and Sandbox by default.
+
+## Source code
+
+View the WalletConnect implementation: [walletconnect.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/walletconnect.ts)

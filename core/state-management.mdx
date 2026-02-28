@@ -1,0 +1,434 @@
+---
+title: State management
+description: Understand the reactive state system powered by TanStack Store.
+---
+
+## Overview
+
+use-wallet uses [TanStack Store](https://tanstack.com/store) to provide a reactive, framework-agnostic state management system. The store tracks wallet connections, active accounts, network configuration, and automatically persists state to localStorage.
+
+## State structure
+
+### State interface
+
+```typescript
+interface State {
+  wallets: WalletStateMap
+  activeWallet: WalletKey | null
+  activeNetwork: string
+  algodClient: algosdk.Algodv2
+  managerStatus: ManagerStatus
+  networkConfig: Record<string, NetworkConfig>
+  customNetworkConfigs: Record<string, Partial<NetworkConfig>>
+}
+
+type WalletStateMap = Partial<Record<WalletKey, WalletState>>
+
+type WalletState = {
+  accounts: WalletAccount[]
+  activeAccount: WalletAccount | null
+}
+
+type WalletAccount = {
+  name: string
+  address: string
+}
+
+type ManagerStatus = 'initializing' | 'ready'
+```
+
+### Default state
+
+```typescript
+const DEFAULT_STATE: State = {
+  wallets: {},
+  activeWallet: null,
+  activeNetwork: 'testnet',
+  algodClient: new algosdk.Algodv2('', 'https://testnet-api.4160.nodely.dev/'),
+  managerStatus: 'initializing',
+  networkConfig: DEFAULT_NETWORK_CONFIG,
+  customNetworkConfigs: {}
+}
+```
+
+## Accessing state
+
+### From WalletManager
+
+The `WalletManager` provides convenient property accessors for common state values:
+
+```typescript
+const manager = new WalletManager({ /* ... */ })
+
+// Wallet state
+const wallets = manager.wallets              // BaseWallet[]
+const activeWallet = manager.activeWallet    // BaseWallet | null
+const activeAccount = manager.activeAccount  // WalletAccount | null
+const activeAddress = manager.activeAddress  // string | null
+
+// Network state
+const network = manager.activeNetwork        // string
+const config = manager.activeNetworkConfig   // NetworkConfig
+const client = manager.algodClient           // algosdk.Algodv2
+
+// Manager state
+const isReady = manager.isReady              // boolean
+const status = manager.status                // ManagerStatus
+```
+
+### Direct store access
+
+For advanced use cases, access the store directly:
+
+```typescript
+const state = manager.store.state
+
+// Access any state property
+const allWallets = state.wallets
+const activeWallet = state.activeWallet
+const networkConfig = state.networkConfig
+```
+
+## Subscribing to changes
+
+### Subscribe to entire state
+
+Subscribe to be notified of any state change:
+
+```typescript
+const unsubscribe = manager.subscribe((state) => {
+  console.log('State updated:', state)
+  console.log('Active wallet:', state.activeWallet)
+  console.log('Active network:', state.activeNetwork)
+})
+
+// Later: stop listening
+unsubscribe()
+```
+
+### Subscribe to specific values
+
+Use TanStack Store selectors to subscribe to specific state values:
+
+```typescript
+import { useStore } from '@tanstack/react-store'
+
+const activeWalletId = useStore(manager.store, (state) => state.activeWallet)
+const activeNetwork = useStore(manager.store, (state) => state.activeNetwork)
+```
+
+<Note>
+  Framework adapters (React, Vue, etc.) provide hooks that handle subscriptions automatically.
+</Note>
+
+## State mutations
+
+The store provides action functions for mutating state:
+
+### Wallet mutations
+
+```typescript
+import { addWallet, removeWallet, setActiveWallet, setActiveAccount, setAccounts } from '@txnlab/use-wallet'
+
+// Add a wallet (typically done by wallet.connect())
+addWallet(manager.store, {
+  walletId: WalletId.PERA,
+  wallet: {
+    accounts: [{ name: 'Pera 1', address: 'ABC...' }],
+    activeAccount: { name: 'Pera 1', address: 'ABC...' }
+  }
+})
+
+// Set active wallet
+setActiveWallet(manager.store, { walletId: WalletId.PERA })
+
+// Set active account within a wallet
+setActiveAccount(manager.store, {
+  walletId: WalletId.PERA,
+  address: 'ABC...'
+})
+
+// Update wallet's accounts (e.g., after account change in wallet)
+setAccounts(manager.store, {
+  walletId: WalletId.PERA,
+  accounts: [
+    { name: 'Pera 1', address: 'ABC...' },
+    { name: 'Pera 2', address: 'DEF...' }
+  ]
+})
+
+// Remove a wallet (typically done by wallet.disconnect())
+removeWallet(manager.store, { walletId: WalletId.PERA })
+```
+
+### Network mutations
+
+```typescript
+import { setActiveNetwork } from '@txnlab/use-wallet'
+import algosdk from 'algosdk'
+
+const newClient = new algosdk.Algodv2('', 'https://mainnet-api.4160.nodely.dev/')
+
+setActiveNetwork(manager.store, {
+  networkId: 'mainnet',
+  algodClient: newClient
+})
+```
+
+### Direct state updates
+
+For advanced use cases, update state directly:
+
+```typescript
+manager.store.setState((state) => ({
+  ...state,
+  managerStatus: 'ready'
+}))
+```
+
+<Warning>
+  Direct state mutations should be rare. Use action functions when possible.
+</Warning>
+
+## State persistence
+
+### Persisted state
+
+A subset of state is automatically persisted to localStorage:
+
+```typescript
+type PersistedState = {
+  wallets: WalletStateMap
+  activeWallet: WalletKey | null
+  activeNetwork: string
+  customNetworkConfigs: Record<string, Partial<NetworkConfig>>
+}
+```
+
+**Storage key:** `@txnlab/use-wallet:v4`
+
+### What is persisted
+
+- ✅ Connected wallets and their accounts
+- ✅ Active wallet and active account
+- ✅ Active network selection
+- ✅ Custom network configuration overrides
+- ❌ Algod client (reconstructed on load)
+- ❌ Manager status (always starts as 'initializing')
+
+### Custom network configs
+
+Custom algod configurations are tracked separately and merged with base configs:
+
+```typescript
+// Base network config (from WalletManager constructor)
+const baseConfig = {
+  testnet: {
+    algod: { token: '', baseServer: 'https://testnet-api.4160.nodely.dev' },
+    // ...
+  }
+}
+
+// User customizes algod config
+manager.updateAlgodConfig('testnet', {
+  baseServer: 'https://custom-node.com'
+})
+
+// Persisted state tracks the delta
+{
+  customNetworkConfigs: {
+    testnet: {
+      algod: { baseServer: 'https://custom-node.com' }
+    }
+  }
+}
+
+// On next load, custom config is merged with base config
+const finalConfig = {
+  ...baseConfig.testnet,
+  algod: {
+    ...baseConfig.testnet.algod,
+    baseServer: 'https://custom-node.com'  // Custom override
+  }
+}
+```
+
+### Disabling persistence
+
+Persistence is automatic and cannot be disabled, but you can:
+
+1. Reset network on each load:
+   ```typescript
+   new WalletManager({
+     options: { resetNetwork: true }
+   })
+   ```
+
+2. Clear persisted state programmatically:
+   ```typescript
+   localStorage.removeItem('@txnlab/use-wallet:v4')
+   ```
+
+## Reactive framework integration
+
+use-wallet's framework adapters leverage TanStack Store's reactive capabilities:
+
+<Tabs>
+  <Tab title="React">
+    ```typescript
+    import { useWallet } from '@txnlab/use-wallet-react'
+
+    function Component() {
+      const { 
+        wallets,           // Reactive: BaseWallet[]
+        activeWallet,      // Reactive: BaseWallet | null
+        activeAccount,     // Reactive: WalletAccount | null
+        activeAddress,     // Reactive: string | null
+        activeNetwork,     // Reactive: string
+        algodClient        // Reactive: algosdk.Algodv2
+      } = useWallet()
+
+      // Component re-renders when any of these values change
+      return <div>{activeAddress}</div>
+    }
+    ```
+  </Tab>
+
+  <Tab title="Vue">
+    ```typescript
+    import { useWallet } from '@txnlab/use-wallet-vue'
+
+    const { 
+      wallets,           // Ref<BaseWallet[]>
+      activeWallet,      // Ref<BaseWallet | null>
+      activeAccount,     // Ref<WalletAccount | null>
+      activeAddress,     // Ref<string | null>
+      activeNetwork,     // Ref<string>
+      algodClient        // Ref<algosdk.Algodv2>
+    } = useWallet()
+
+    // All values are Vue refs that automatically trigger reactivity
+    ```
+  </Tab>
+
+  <Tab title="Solid">
+    ```typescript
+    import { useWallet } from '@txnlab/use-wallet-solid'
+
+    const { 
+      wallets,           // Accessor<BaseWallet[]>
+      activeWallet,      // Accessor<BaseWallet | null>
+      activeAccount,     // Accessor<WalletAccount | null>
+      activeAddress,     // Accessor<string | null>
+      activeNetwork,     // Accessor<string>
+      algodClient        // Accessor<algosdk.Algodv2>
+    } = useWallet()
+
+    // All values are Solid signals that automatically trigger reactivity
+    return <div>{activeAddress()}</div>
+    ```
+  </Tab>
+
+  <Tab title="Svelte">
+    ```typescript
+    import { useWallet } from '@txnlab/use-wallet-svelte'
+
+    const { 
+      wallets,           // Readable<BaseWallet[]>
+      activeWallet,      // Readable<BaseWallet | null>
+      activeAccount,     // Readable<WalletAccount | null>
+      activeAddress,     // Readable<string | null>
+      activeNetwork,     // Readable<string>
+      algodClient        // Readable<algosdk.Algodv2>
+    } = useWallet()
+
+    // All values are Svelte stores that automatically trigger reactivity
+    ```
+  </Tab>
+</Tabs>
+
+## Wallet state isolation
+
+Each wallet instance has isolated state within the store:
+
+```typescript
+const state = manager.store.state
+
+// Each wallet has its own state
+state.wallets[WalletId.PERA] // { accounts: [...], activeAccount: {...} }
+state.wallets[WalletId.DEFLY] // { accounts: [...], activeAccount: {...} }
+
+// Only one wallet can be active
+state.activeWallet // WalletId.PERA | null
+
+// Each wallet maintains its own active account
+const peraActiveAccount = state.wallets[WalletId.PERA]?.activeAccount
+const deflyActiveAccount = state.wallets[WalletId.DEFLY]?.activeAccount
+```
+
+### Composite wallet keys
+
+WalletConnect skins use composite keys for state isolation:
+
+```typescript
+// Two WalletConnect instances with different skins
+const wallets = [
+  {
+    id: WalletId.WALLETCONNECT,
+    options: { projectId: 'abc', skin: 'biatec' }
+  },
+  {
+    id: WalletId.WALLETCONNECT,
+    options: { projectId: 'abc', skin: 'voiwallet' }
+  }
+]
+
+// Each has a unique key in state
+state.wallets['walletconnect:biatec']    // Biatec wallet state
+state.wallets['walletconnect:voiwallet'] // Voi wallet state
+```
+
+## Type guards
+
+use-wallet provides type guards for runtime validation:
+
+```typescript
+import {
+  isValidWalletId,
+  isValidWalletKey,
+  isValidWalletAccount,
+  isValidWalletState,
+  isValidPersistedState
+} from '@txnlab/use-wallet'
+
+if (isValidWalletId(value)) {
+  // value is WalletId
+}
+
+if (isValidWalletKey(key)) {
+  // key is WalletKey (WalletId or composite key)
+}
+
+if (isValidWalletAccount(account)) {
+  // account is WalletAccount
+}
+
+if (isValidWalletState(wallet)) {
+  // wallet is WalletState
+}
+
+if (isValidPersistedState(state)) {
+  // state is PersistedState
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Wallet manager" icon="gear" href="/core/wallet-manager">
+    Learn about the WalletManager class
+  </Card>
+  <Card title="Network configuration" icon="network-wired" href="/core/network-configuration">
+    Configure networks and algod clients
+  </Card>
+</CardGroup>

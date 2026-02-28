@@ -1,0 +1,440 @@
+---
+title: Network configuration
+description: Configure Algorand networks, manage algod clients, and switch between networks dynamically.
+---
+
+## Overview
+
+use-wallet provides flexible network configuration with built-in defaults for all major Algorand networks. You can customize algod endpoints, add custom networks, and switch networks at runtime.
+
+## Default networks
+
+By default, use-wallet includes configurations for:
+
+- **mainnet** - Algorand MainNet
+- **testnet** - Algorand TestNet
+- **betanet** - Algorand BetaNet
+- **fnet** - Algorand FNet (FutureFi)
+- **localnet** - Local development network
+
+All default networks use free public API endpoints from [Nodely](https://nodely.io).
+
+## Network configuration types
+
+### NetworkConfig
+
+```typescript
+interface NetworkConfig {
+  algod: AlgodConfig
+  genesisHash?: string
+  genesisId?: string
+  isTestnet?: boolean
+  caipChainId?: string
+}
+
+interface AlgodConfig {
+  token: string | algosdk.AlgodTokenHeader | algosdk.CustomTokenHeader | algosdk.BaseHTTPClient
+  baseServer: string
+  port?: string | number
+  headers?: Record<string, string>
+}
+```
+
+### Default network values
+
+<Tabs>
+  <Tab title="MainNet">
+    ```typescript
+    {
+      algod: {
+        token: '',
+        baseServer: 'https://mainnet-api.4160.nodely.dev',
+        headers: {}
+      },
+      isTestnet: false,
+      genesisHash: 'wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+      genesisId: 'mainnet-v1.0',
+      caipChainId: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k'
+    }
+    ```
+  </Tab>
+
+  <Tab title="TestNet">
+    ```typescript
+    {
+      algod: {
+        token: '',
+        baseServer: 'https://testnet-api.4160.nodely.dev',
+        headers: {}
+      },
+      isTestnet: true,
+      genesisHash: 'SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=',
+      genesisId: 'testnet-v1.0',
+      caipChainId: 'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe'
+    }
+    ```
+  </Tab>
+
+  <Tab title="LocalNet">
+    ```typescript
+    {
+      algod: {
+        token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        baseServer: 'http://localhost',
+        port: 4001,
+        headers: {}
+      },
+      isTestnet: true
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Customizing networks
+
+### Using NetworkConfigBuilder
+
+The `NetworkConfigBuilder` provides a fluent API for customizing default networks:
+
+```typescript
+import { WalletManager, NetworkConfigBuilder } from '@txnlab/use-wallet'
+
+const networks = new NetworkConfigBuilder()
+  .testnet({
+    algod: {
+      token: 'your-token',
+      baseServer: 'https://your-node.com'
+    }
+  })
+  .mainnet({
+    algod: {
+      token: 'your-token',
+      baseServer: 'https://your-mainnet-node.com',
+      headers: {
+        'X-API-Key': 'your-api-key'
+      }
+    }
+  })
+  .localnet({
+    algod: {
+      port: 8080  // Custom port
+    }
+  })
+  .addNetwork('customnet', {
+    algod: {
+      token: '',
+      baseServer: 'https://custom-network.com'
+    },
+    isTestnet: true,
+    genesisHash: 'custom-genesis-hash',
+    genesisId: 'custom-v1.0',
+    caipChainId: 'algorand:custom'
+  })
+  .build()
+
+const manager = new WalletManager({ networks })
+```
+
+<Note>
+  Genesis hash, genesis ID, and CAIP chain ID are immutable for built-in networks and cannot be overridden.
+</Note>
+
+### Manual configuration
+
+You can also provide a plain object:
+
+```typescript
+const manager = new WalletManager({
+  networks: {
+    testnet: {
+      algod: {
+        token: '',
+        baseServer: 'https://testnet-api.algonode.cloud',
+        port: 443,
+        headers: {}
+      },
+      isTestnet: true,
+      genesisHash: 'SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=',
+      genesisId: 'testnet-v1.0',
+      caipChainId: 'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe'
+    },
+    mynetwork: {
+      algod: {
+        token: 'my-token',
+        baseServer: 'https://my-algorand-node.com'
+      },
+      isTestnet: false
+    }
+  },
+  defaultNetwork: 'mynetwork'
+})
+```
+
+## Runtime network management
+
+### Switching networks
+
+Switch between configured networks at any time:
+
+```typescript
+await walletManager.setActiveNetwork('mainnet')
+
+console.log(walletManager.activeNetwork) // 'mainnet'
+console.log(walletManager.algodClient)    // Updated Algodv2 instance
+```
+
+<Note>
+  The active network is persisted to localStorage and restored on next session.
+</Note>
+
+### Updating algod configuration
+
+Update a network's algod configuration dynamically:
+
+```typescript
+walletManager.updateAlgodConfig('testnet', {
+  baseServer: 'https://new-testnet-node.com',
+  token: 'new-token'
+})
+
+// If testnet is active, algodClient is updated immediately
+```
+
+<Note>
+  Custom configurations are persisted separately from the base configuration and can be reset.
+</Note>
+
+### Resetting network configuration
+
+Reset a network to its original default configuration:
+
+```typescript
+walletManager.resetNetworkConfig('testnet')
+
+// Any customizations made via updateAlgodConfig are removed
+```
+
+## Accessing network data
+
+### Active network
+
+```typescript
+// Current network ID
+const networkId = walletManager.activeNetwork // 'testnet'
+
+// Active network configuration
+const config = walletManager.activeNetworkConfig
+console.log(config.algod.baseServer) // 'https://testnet-api.4160.nodely.dev'
+console.log(config.genesisId)        // 'testnet-v1.0'
+
+// Algod client for active network
+const algodClient = walletManager.algodClient
+const params = await algodClient.getTransactionParams().do()
+```
+
+### All networks
+
+```typescript
+// All configured networks
+const allNetworks = walletManager.networkConfig
+
+for (const [id, config] of Object.entries(allNetworks)) {
+  console.log(`${id}: ${config.algod.baseServer}`)
+}
+```
+
+## Network identifiers
+
+### NetworkId enum
+
+```typescript
+enum NetworkId {
+  MAINNET = 'mainnet',
+  TESTNET = 'testnet',
+  BETANET = 'betanet',
+  FNET = 'fnet',
+  LOCALNET = 'localnet'
+}
+
+// Use with setActiveNetwork
+await walletManager.setActiveNetwork(NetworkId.MAINNET)
+```
+
+### CAIP-2 chain IDs
+
+use-wallet includes CAIP-2 chain identifiers for WalletConnect compatibility:
+
+- **mainnet**: `algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k`
+- **testnet**: `algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe`
+- **betanet**: `algorand:mFgazF-2uRS1tMiL9dsj01hJGySEmPN2`
+- **fnet**: `algorand:kUt08LxeVAAGHnh4JoAoAMM9ql_hBwSo`
+
+```typescript
+const chainId = walletManager.activeNetworkConfig.caipChainId
+// 'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe'
+```
+
+## Algod client
+
+The `WalletManager` provides an automatically managed `algodClient` instance:
+
+```typescript
+// Access the client
+const client = walletManager.algodClient
+
+// Use with algosdk
+import algosdk from 'algosdk'
+
+const params = await client.getTransactionParams().do()
+const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  from: walletManager.activeAddress!,
+  to: 'RECEIVER_ADDRESS',
+  amount: 1000000,
+  suggestedParams: params
+})
+```
+
+### Manual client updates
+
+You can also set the algod client directly (rare):
+
+```typescript
+import algosdk from 'algosdk'
+
+walletManager.algodClient = new algosdk.Algodv2(
+  'token',
+  'https://my-node.com',
+  443
+)
+```
+
+## State persistence
+
+Network state is automatically persisted to localStorage:
+
+- **Active network**: Restored on next session
+- **Custom algod configs**: Stored separately from base configuration
+- **Reset behavior**: Set `options.resetNetwork: true` to ignore persisted network
+
+```typescript
+const manager = new WalletManager({
+  networks: myNetworks,
+  defaultNetwork: 'testnet',
+  options: {
+    resetNetwork: true  // Always use 'testnet' on init
+  }
+})
+```
+
+## Examples
+
+<CodeGroup>
+```typescript AlgoNode endpoints
+import { NetworkConfigBuilder } from '@txnlab/use-wallet'
+
+const networks = new NetworkConfigBuilder()
+  .mainnet({
+    algod: {
+      token: '',
+      baseServer: 'https://mainnet-api.algonode.cloud'
+    }
+  })
+  .testnet({
+    algod: {
+      token: '',
+      baseServer: 'https://testnet-api.algonode.cloud'
+    }
+  })
+  .build()
+```
+
+```typescript AlgoExplorer
+const networks = new NetworkConfigBuilder()
+  .mainnet({
+    algod: {
+      token: '',
+      baseServer: 'https://node.algoexplorerapi.io'
+    }
+  })
+  .testnet({
+    algod: {
+      token: '',
+      baseServer: 'https://node.testnet.algoexplorerapi.io'
+    }
+  })
+  .build()
+```
+
+```typescript Custom headers
+const networks = new NetworkConfigBuilder()
+  .mainnet({
+    algod: {
+      token: '',
+      baseServer: 'https://my-node.com',
+      headers: {
+        'X-API-Key': process.env.API_KEY!,
+        'X-Custom-Header': 'value'
+      }
+    }
+  })
+  .build()
+```
+
+```typescript LocalNet with AlgoKit
+const networks = new NetworkConfigBuilder()
+  .localnet({
+    algod: {
+      token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      baseServer: 'http://localhost',
+      port: 4001
+    }
+  })
+  .build()
+
+const manager = new WalletManager({
+  networks,
+  defaultNetwork: 'localnet',
+  wallets: [WalletId.KMD, WalletId.MNEMONIC]
+})
+```
+
+```typescript VOI network
+const networks = new NetworkConfigBuilder()
+  .addNetwork('voi-testnet', {
+    algod: {
+      token: '',
+      baseServer: 'https://testnet-api.voi.nodely.dev'
+    },
+    isTestnet: true,
+    genesisHash: 'IXnoWtviVVJW5LGivNFc0Dq14V3kqaXuK2u5OQrdVZo=',
+    genesisId: 'voitest-v1',
+    caipChainId: 'algorand:IXnoWtviVVJW5LGivNFc0Dq14V3kqaXu'
+  })
+  .build()
+
+const manager = new WalletManager({
+  networks,
+  defaultNetwork: 'voi-testnet',
+  wallets: [
+    {
+      id: WalletId.WALLETCONNECT,
+      options: {
+        projectId: 'your-project-id',
+        skin: 'voiwallet'
+      }
+    }
+  ]
+})
+```
+</CodeGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Wallet manager" icon="gear" href="/core/wallet-manager">
+    Learn about the WalletManager class
+  </Card>
+  <Card title="State management" icon="database" href="/core/state-management">
+    Understand the reactive state system
+  </Card>
+</CardGroup>

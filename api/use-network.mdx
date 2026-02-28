@@ -1,0 +1,519 @@
+---
+title: useNetwork
+description: Access and manage network configuration across all framework adapters
+---
+
+The `useNetwork` hook/composable provides access to network-related state and methods from the WalletManager. It enables applications to switch between networks and customize node configurations at runtime.
+
+## Basic usage
+
+<Tabs>
+  <Tab title="React">
+    ```tsx
+    import { useNetwork } from '@txnlab/use-wallet-react'
+
+    function NetworkStatus() {
+      const { activeNetwork, activeNetworkConfig } = useNetwork()
+
+      return (
+        <div>
+          <div>Network: {activeNetwork}</div>
+          <div>Node: {activeNetworkConfig.algod.baseServer}</div>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Vue">
+    ```vue
+    <script setup>
+    import { useNetwork } from '@txnlab/use-wallet-vue'
+
+    const { activeNetwork, activeNetworkConfig } = useNetwork()
+    </script>
+
+    <template>
+      <div>
+        <div>Network: {{ activeNetwork }}</div>
+        <div>Node: {{ activeNetworkConfig.algod.baseServer }}</div>
+      </div>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Solid">
+    ```tsx
+    import { useNetwork } from '@txnlab/use-wallet-solid'
+
+    function NetworkStatus() {
+      const { activeNetwork, activeNetworkConfig } = useNetwork()
+
+      return (
+        <div>
+          <div>Network: {activeNetwork()}</div>
+          <div>Node: {activeNetworkConfig().algod.baseServer}</div>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Svelte">
+    ```svelte
+    <script lang="ts">
+    import { useNetwork } from '@txnlab/use-wallet-svelte'
+
+    const { activeNetwork, activeNetworkConfig } = useNetwork()
+    </script>
+
+    <div>
+      <div>Network: {activeNetwork.current}</div>
+      <div>Node: {activeNetworkConfig.current.algod.baseServer}</div>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+## Return values
+
+### State properties
+
+<ResponseField name="activeNetwork" type="string" required>
+  Currently active network ID (e.g., `'mainnet'`, `'testnet'`, `'localnet'`)
+</ResponseField>
+
+<ResponseField name="networkConfig" type="Record<string, NetworkConfig>" required>
+  Complete network configuration object containing all configured networks
+
+  <Expandable title="NetworkConfig interface">
+    <ResponseField name="algod" type="AlgodConfig" required>
+      Algod node configuration
+
+      ```typescript
+      interface AlgodConfig {
+        token: string | algosdk.AlgodTokenHeader | algosdk.CustomTokenHeader
+        baseServer: string
+        port?: string | number
+        headers?: Record<string, string>
+      }
+      ```
+    </ResponseField>
+
+    <ResponseField name="genesisHash" type="string">
+      Optional genesis hash for network validation
+    </ResponseField>
+
+    <ResponseField name="genesisId" type="string">
+      Optional genesis ID for network identification
+    </ResponseField>
+
+    <ResponseField name="isTestnet" type="boolean">
+      Whether this is a testnet (affects dispenser integration)
+    </ResponseField>
+
+    <ResponseField name="caipChainId" type="string">
+      Optional CAIP-2 chain identifier
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="activeNetworkConfig" type="NetworkConfig" required>
+  Configuration object for the currently active network
+</ResponseField>
+
+### Methods
+
+<ResponseField name="setActiveNetwork" type="function" required>
+  Switch to a different network.
+
+  ```typescript
+  setActiveNetwork(networkId: NetworkId | string): Promise<void>
+  ```
+
+  <Expandable title="Details">
+    <ParamField path="networkId" type="NetworkId | string" required>
+      Network identifier (e.g., `NetworkId.MAINNET`, `'testnet'`, or a custom network ID)
+    </ParamField>
+
+    **Behavior:**
+    - Creates a new Algod client for the target network
+    - Updates the active network in the store
+    - Persists the selection to local storage
+    - Maintains active wallet sessions (if supported by the wallet)
+
+    **Throws:** Error if the network ID is not found in the configuration
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="updateAlgodConfig" type="function" required>
+  Update the Algod client configuration for a specific network.
+
+  ```typescript
+  updateAlgodConfig(networkId: string, config: Partial<AlgodConfig>): void
+  ```
+
+  <Expandable title="Details">
+    <ParamField path="networkId" type="string" required>
+      Network identifier to update
+    </ParamField>
+
+    <ParamField path="config" type="Partial<AlgodConfig>" required>
+      Partial configuration to merge with existing settings
+
+      ```typescript
+      interface AlgodConfig {
+        token?: string | algosdk.AlgodTokenHeader | algosdk.CustomTokenHeader
+        baseServer?: string
+        port?: string | number
+        headers?: Record<string, string>
+      }
+      ```
+    </ParamField>
+
+    **Behavior:**
+    - Merges the new configuration with existing settings
+    - Creates a new Algod client if updating the active network
+    - Persists the configuration to local storage
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="resetNetworkConfig" type="function" required>
+  Reset a network's configuration to its default values.
+
+  ```typescript
+  resetNetworkConfig(networkId: string): void
+  ```
+
+  <Expandable title="Details">
+    <ParamField path="networkId" type="string" required>
+      Network identifier to reset
+    </ParamField>
+
+    **Behavior:**
+    - Restores the original configuration for the specified network
+    - Creates a new Algod client if resetting the active network
+    - Removes any custom configuration from local storage
+  </Expandable>
+</ResponseField>
+
+## Framework-specific details
+
+### React
+
+<Tabs>
+  <Tab title="State access">
+    React provides state directly as properties:
+
+    ```tsx
+    const { activeNetwork, networkConfig } = useNetwork()
+
+    // Direct property access
+    console.log(activeNetwork) // 'testnet'
+    console.log(networkConfig['mainnet'].algod.baseServer)
+    ```
+  </Tab>
+
+  <Tab title="Switching networks">
+    ```tsx
+    import { useNetwork, NetworkId } from '@txnlab/use-wallet-react'
+
+    function NetworkSwitcher() {
+      const { activeNetwork, setActiveNetwork } = useNetwork()
+
+      const handleSwitch = async (networkId: string) => {
+        try {
+          await setActiveNetwork(networkId)
+        } catch (error) {
+          console.error('Network switch failed:', error)
+        }
+      }
+
+      return (
+        <div>
+          <button onClick={() => handleSwitch(NetworkId.MAINNET)}>
+            Mainnet
+          </button>
+          <button onClick={() => handleSwitch(NetworkId.TESTNET)}>
+            Testnet
+          </button>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Vue
+
+<Tabs>
+  <Tab title="State access">
+    Vue returns reactive refs that auto-unwrap in templates:
+
+    ```vue
+    <script setup>
+    const { activeNetwork, networkConfig } = useNetwork()
+
+    // Access .value in script
+    console.log(activeNetwork.value) // 'testnet'
+    console.log(networkConfig['mainnet'].algod.baseServer)
+    </script>
+
+    <template>
+      <!-- Auto-unwrapped in templates -->
+      <div>{{ activeNetwork }}</div>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Switching networks">
+    ```vue
+    <script setup lang="ts">
+    import { useNetwork, NetworkId } from '@txnlab/use-wallet-vue'
+
+    const { activeNetwork, setActiveNetwork } = useNetwork()
+
+    const handleSwitch = async (networkId: string) => {
+      try {
+        await setActiveNetwork(networkId)
+      } catch (error) {
+        console.error('Network switch failed:', error)
+      }
+    }
+    </script>
+
+    <template>
+      <div>
+        <button @click="handleSwitch(NetworkId.MAINNET)">
+          Mainnet
+        </button>
+        <button @click="handleSwitch(NetworkId.TESTNET)">
+          Testnet
+        </button>
+      </div>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+### Solid
+
+<Tabs>
+  <Tab title="State access">
+    Solid uses getter functions for reactive state:
+
+    ```tsx
+    const { activeNetwork, networkConfig } = useNetwork()
+
+    // Access via function call
+    console.log(activeNetwork()) // 'testnet'
+    console.log(networkConfig()['mainnet'].algod.baseServer)
+    ```
+  </Tab>
+
+  <Tab title="Switching networks">
+    ```tsx
+    import { useNetwork, NetworkId } from '@txnlab/use-wallet-solid'
+
+    function NetworkSwitcher() {
+      const { activeNetwork, setActiveNetwork } = useNetwork()
+
+      const handleSwitch = async (networkId: string) => {
+        try {
+          await setActiveNetwork(networkId)
+        } catch (error) {
+          console.error('Network switch failed:', error)
+        }
+      }
+
+      return (
+        <div>
+          <button onClick={() => handleSwitch(NetworkId.MAINNET)}>
+            Mainnet
+          </button>
+          <button onClick={() => handleSwitch(NetworkId.TESTNET)}>
+            Testnet
+          </button>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Svelte
+
+<Tabs>
+  <Tab title="State access">
+    Svelte uses `.current` to access reactive values:
+
+    ```svelte
+    <script lang="ts">
+    const { activeNetwork, networkConfig } = useNetwork()
+
+    // Access via .current property
+    console.log(activeNetwork.current) // 'testnet'
+    console.log(networkConfig['mainnet'].algod.baseServer)
+    </script>
+
+    <div>{activeNetwork.current}</div>
+    ```
+  </Tab>
+
+  <Tab title="Switching networks">
+    ```svelte
+    <script lang="ts">
+    import { useNetwork, NetworkId } from '@txnlab/use-wallet-svelte'
+
+    const { activeNetwork, setActiveNetwork } = useNetwork()
+
+    const handleSwitch = async (networkId: string) => {
+      try {
+        await setActiveNetwork(networkId)
+      } catch (error) {
+        console.error('Network switch failed:', error)
+      }
+    }
+    </script>
+
+    <div>
+      <button onclick={() => handleSwitch(NetworkId.MAINNET)}>
+        Mainnet
+      </button>
+      <button onclick={() => handleSwitch(NetworkId.TESTNET)}>
+        Testnet
+      </button>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+## Common use cases
+
+### Switching networks
+
+```typescript
+import { useNetwork, NetworkId } from '@txnlab/use-wallet-[framework]'
+
+const { setActiveNetwork } = useNetwork()
+
+try {
+  await setActiveNetwork(NetworkId.MAINNET)
+} catch (error) {
+  console.error('Failed to switch network:', error)
+}
+```
+
+### Updating node configuration
+
+```typescript
+import { useNetwork } from '@txnlab/use-wallet-[framework]'
+
+const { updateAlgodConfig } = useNetwork()
+
+// Point testnet to a custom node
+updateAlgodConfig('testnet', {
+  baseServer: 'https://my-custom-node.example.com',
+  port: 443,
+  token: 'my-api-token'
+})
+```
+
+### Resetting to defaults
+
+```typescript
+import { useNetwork } from '@txnlab/use-wallet-[framework]'
+
+const { resetNetworkConfig } = useNetwork()
+
+// Reset testnet to default configuration
+resetNetworkConfig('testnet')
+```
+
+### Custom network configuration
+
+```typescript
+// During WalletManager initialization
+const manager = new WalletManager({
+  wallets: [WalletId.PERA],
+  network: 'custom-network',
+  networkConfig: {
+    'custom-network': {
+      algod: {
+        token: 'custom-token',
+        baseServer: 'https://custom-node.example.com',
+        port: 443
+      },
+      isTestnet: true
+    }
+  }
+})
+
+// Later, switch to custom network
+const { setActiveNetwork } = useNetwork()
+await setActiveNetwork('custom-network')
+```
+
+## Network identifiers
+
+Built-in network IDs available via the `NetworkId` enum:
+
+```typescript
+import { NetworkId } from '@txnlab/use-wallet'
+
+NetworkId.MAINNET   // 'mainnet'
+NetworkId.TESTNET   // 'testnet'
+NetworkId.BETANET   // 'betanet'
+NetworkId.LOCALNET  // 'localnet'
+```
+
+You can also use custom string identifiers for custom networks.
+
+## Error handling
+
+Network operations may throw errors in these situations:
+
+```typescript
+try {
+  await setActiveNetwork('invalid-network')
+} catch (error) {
+  // Error: Network "invalid-network" not found in network configuration
+}
+
+try {
+  updateAlgodConfig('testnet', {
+    baseServer: '' // Invalid empty server
+  })
+} catch (error) {
+  // Error: Invalid configuration
+}
+```
+
+## TypeScript support
+
+Full TypeScript definitions are available:
+
+```typescript
+import type {
+  NetworkId,
+  NetworkConfig,
+  AlgodConfig
+} from '@txnlab/use-wallet-react' // or vue/solid/svelte
+
+// NetworkConfig type
+interface NetworkConfig {
+  algod: AlgodConfig
+  genesisHash?: string
+  genesisId?: string
+  isTestnet?: boolean
+  caipChainId?: string
+}
+
+// AlgodConfig type
+interface AlgodConfig {
+  token: string | algosdk.AlgodTokenHeader | algosdk.CustomTokenHeader
+  baseServer: string
+  port?: string | number
+  headers?: Record<string, string>
+}
+```

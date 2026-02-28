@@ -1,0 +1,317 @@
+---
+title: Examples
+description: Example projects demonstrating use-wallet integration across different frameworks
+---
+
+This page provides an overview of the example projects available in the use-wallet repository. Each example demonstrates key features and best practices for integrating use-wallet into different frameworks and environments.
+
+All examples are built with Vite or their respective meta-frameworks and include:
+
+- Complete wallet integration with all supported providers
+- Transaction signing demonstration
+- End-to-end tests with Playwright
+- TypeScript configuration
+- Runtime node configuration UI (Vite examples only)
+
+## Framework examples
+
+<CardGroup cols={2}>
+  <Card title="Vanilla TypeScript" icon="code" href="https://github.com/TxnLab/use-wallet/tree/main/examples/vanilla-ts">
+    Framework-agnostic usage with direct WalletManager implementation
+  </Card>
+  <Card title="React" icon="react" href="https://github.com/TxnLab/use-wallet/tree/main/examples/react-ts">
+    React hooks and patterns with TypeScript
+  </Card>
+  <Card title="Vue" icon="vuejs" href="https://github.com/TxnLab/use-wallet/tree/main/examples/vue-ts">
+    Vue composables and integration with Vue's reactivity system
+  </Card>
+  <Card title="SolidJS" icon="s" href="https://github.com/TxnLab/use-wallet/tree/main/examples/solid-ts">
+    Solid.js primitives with fine-grained reactivity
+  </Card>
+  <Card title="Svelte" icon="code" href="https://github.com/TxnLab/use-wallet/tree/main/examples/svelte-ts">
+    Svelte primitives and reactivity patterns
+  </Card>
+</CardGroup>
+
+## Meta-framework examples
+
+<CardGroup cols={2}>
+  <Card title="Next.js" icon="n" href="https://github.com/TxnLab/use-wallet/tree/main/examples/nextjs">
+    Server-side rendering with Next.js App Router
+  </Card>
+  <Card title="Nuxt" icon="n" href="https://github.com/TxnLab/use-wallet/tree/main/examples/nuxt">
+    SSR with Vue and Nuxt module integration
+  </Card>
+</CardGroup>
+
+## Vanilla TypeScript
+
+The Vanilla TypeScript example demonstrates framework-agnostic usage of the core library.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/vanilla-ts
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- Framework-agnostic usage
+- Direct WalletManager implementation
+- Custom state management
+- TypeScript configuration without a framework
+
+<Accordion title="View example code">
+```typescript
+import { NetworkId, WalletId, WalletManager, type SupportedWallet } from '@txnlab/use-wallet'
+
+const wallets: SupportedWallet[] = [
+  WalletId.DEFLY,
+  WalletId.PERA,
+  {
+    id: WalletId.WALLETCONNECT,
+    options: { projectId: 'fcfde0713d43baa0d23be0773c80a72b' }
+  },
+  WalletId.KMD,
+  WalletId.MNEMONIC
+]
+
+const walletManager = new WalletManager({
+  wallets,
+  defaultNetwork: NetworkId.TESTNET
+})
+```
+</Accordion>
+
+## React
+
+The React example demonstrates React-specific hooks and patterns.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/react-ts
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- React-specific hooks and patterns
+- Component composition with TypeScript
+- Integration with React's state management
+- Advanced features like runtime node configuration
+
+<Accordion title="View example code">
+```tsx
+import {
+  NetworkId,
+  WalletId,
+  WalletManager,
+  WalletProvider,
+  type SupportedWallet
+} from '@txnlab/use-wallet-react'
+
+const wallets: SupportedWallet[] = [
+  WalletId.DEFLY,
+  WalletId.PERA,
+  {
+    id: WalletId.WALLETCONNECT,
+    options: { projectId: 'fcfde0713d43baa0d23be0773c80a72b' }
+  },
+  WalletId.KMD,
+  WalletId.MNEMONIC
+]
+
+const walletManager = new WalletManager({
+  wallets,
+  defaultNetwork: NetworkId.TESTNET
+})
+
+function App() {
+  return (
+    <WalletProvider manager={walletManager}>
+      {/* Your app components */}
+    </WalletProvider>
+  )
+}
+
+// In a child component
+import { useWallet } from '@txnlab/use-wallet-react'
+
+function Connect() {
+  const { algodClient, activeAddress, transactionSigner, wallets } = useWallet()
+
+  const handleConnect = async (wallet: Wallet) => {
+    await wallet.connect()
+  }
+
+  // ... transaction logic
+}
+```
+</Accordion>
+
+## Vue
+
+The Vue example showcases Vue composables and plugins.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/vue-ts
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- Vue composables and plugins
+- Integration with Vue's reactivity system
+- TypeScript support in Vue components
+- Advanced features like runtime node configuration
+
+## SolidJS
+
+The Solid example illustrates Solid.js primitives and patterns.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/solid-ts
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- Solid.js primitives and patterns
+- Fine-grained reactivity integration
+- TypeScript configuration for Solid
+- Advanced features like runtime node configuration
+
+## Svelte
+
+The Svelte example showcases Svelte primitives and patterns.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/svelte-ts
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- Svelte primitives and patterns
+- Integration with Svelte's reactivity system
+- TypeScript support in Svelte components
+- Advanced features like runtime node configuration
+
+## Next.js
+
+The Next.js example demonstrates server-side rendering considerations.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/nextjs
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- Server-side rendering considerations
+- Next.js-specific configuration
+- Integration with Next.js App Router
+- TypeScript configuration for Next.js
+
+## Nuxt
+
+The Nuxt example showcases server-side rendering with Vue.
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+cd use-wallet/examples/nuxt
+pnpm install
+pnpm dev
+```
+
+**Key features:**
+- Server-side rendering with Vue
+- Nuxt module integration
+- Auto-imports configuration
+- TypeScript configuration for Nuxt
+
+## Key features
+
+### Wallet integration
+
+All examples include a complete wallet connection interface demonstrating:
+
+- Connecting/disconnecting wallets
+- Switching active accounts
+- Transaction signing
+- Network management
+
+### Runtime node configuration
+
+The Vite examples include a UI for configuring Algorand node settings at runtime:
+
+- Custom node URL/port/headers
+- Network switching
+- Configuration persistence
+
+For more information about this feature, see the [Runtime node configuration](/guides/runtime-node-configuration) guide.
+
+### Testing
+
+All examples include end-to-end tests using Playwright, demonstrating:
+
+- Mocked Algorand node responses
+- Wallet connection testing
+- Transaction signing tests
+- Network switching tests
+
+For more information about testing, see the [Testing with mnemonic wallet](/guides/testing-with-mnemonic-wallet) guide.
+
+## Getting started
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/TxnLab/use-wallet
+```
+
+2. Install dependencies:
+
+```bash
+cd use-wallet
+pnpm install
+```
+
+3. Build the packages:
+
+```bash
+pnpm build
+```
+
+4. Run an example using the provided scripts:
+
+```bash
+pnpm example:react   # Run React example
+pnpm example:vue     # Run Vue example
+pnpm example:solid   # Run Solid example
+pnpm example:svelte  # Run Svelte example
+pnpm example:ts      # Run Vanilla TypeScript example
+pnpm example:nextjs  # Run Next.js example
+pnpm example:nuxt    # Run Nuxt example
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Framework integration" icon="puzzle-piece" href="/framework/react">
+    Read the framework-specific integration guides
+  </Card>
+  <Card title="Connect wallet menu" icon="wallet" href="/guides/connect-wallet-menu">
+    Learn core wallet integration concepts
+  </Card>
+  <Card title="Runtime node configuration" icon="gear" href="/guides/runtime-node-configuration">
+    Configure Algorand nodes at runtime
+  </Card>
+  <Card title="Testing" icon="flask" href="/guides/testing-with-mnemonic-wallet">
+    Set up testing with mnemonic wallet
+  </Card>
+</CardGroup>

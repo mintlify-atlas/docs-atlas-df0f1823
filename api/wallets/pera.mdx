@@ -1,0 +1,117 @@
+---
+title: Pera wallet
+description: API reference for the Pera wallet provider in use-wallet
+---
+
+The Pera wallet provider enables integration with [Pera Wallet](https://perawallet.app/), a popular Algorand wallet available on mobile and web.
+
+## Installation
+
+Install the required peer dependency:
+
+```bash
+npm install @perawallet/connect
+```
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.PERA,
+    {
+      id: WalletId.PERA,
+      options: { shouldShowSignTxnToast: false }
+    }
+  ]
+})
+```
+
+## Configuration
+
+The Pera wallet accepts the following configuration options:
+
+<ParamField path="bridge" type="string" optional>
+  Custom WalletConnect bridge URL. Defaults to the standard Pera bridge.
+</ParamField>
+
+<ParamField path="shouldShowSignTxnToast" type="boolean" optional default="true">
+  Whether to show a toast notification when signing transactions.
+</ParamField>
+
+<ParamField path="chainId" type="416001 | 416002 | 416003 | 4160" optional>
+  Chain ID for the Algorand network:
+  - `416001`: MainNet
+  - `416002`: TestNet
+  - `416003`: BetaNet
+  - `4160`: Custom network
+</ParamField>
+
+<ParamField path="compactMode" type="boolean" optional default="false">
+  Enable compact mode for the Pera Wallet UI.
+</ParamField>
+
+## Type definition
+
+```typescript
+export interface PeraWalletConnectOptions {
+  bridge?: string
+  shouldShowSignTxnToast?: boolean
+  chainId?: 416001 | 416002 | 416003 | 4160
+  compactMode?: boolean
+}
+```
+
+## Features
+
+### Multi-account support
+
+Pera Wallet supports connecting multiple accounts. All connected accounts are available through the wallet state.
+
+### Mobile deep linking
+
+On mobile devices, Pera Wallet uses deep linking to open the native app for transaction signing.
+
+### Pera Discover auto-connect
+
+When using the Pera Discover in-app browser, the wallet automatically connects without requiring user interaction.
+
+## Methods
+
+### connect()
+
+Initiates connection to Pera Wallet. Opens the Pera connection modal.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects from Pera Wallet and clears the session.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using Pera Wallet. See [signing transactions](/api-reference/signing-transactions) for details.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+## Session management
+
+Pera Wallet uses WalletConnect for session management. Sessions persist across page reloads and are automatically restored when the app initializes.
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Full support via deep linking
+- **Desktop:** Full support
+
+## Source code
+
+View the Pera wallet implementation: [pera.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/pera.ts)

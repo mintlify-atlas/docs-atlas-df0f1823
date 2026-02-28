@@ -1,0 +1,115 @@
+---
+title: Exodus wallet
+description: API reference for the Exodus wallet provider in use-wallet
+---
+
+The Exodus wallet provider enables integration with the [Exodus browser extension](https://www.exodus.com/), a multi-chain wallet with support for Algorand.
+
+## Installation
+
+No peer dependencies required. Users must have the Exodus browser extension installed.
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.EXODUS,
+    {
+      id: WalletId.EXODUS,
+      options: {
+        genesisHash: 'wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8='
+      }
+    }
+  ]
+})
+```
+
+## Configuration
+
+The Exodus wallet accepts the following configuration options:
+
+<ParamField path="genesisID" type="string" optional>
+  Genesis ID for the Algorand network (e.g., 'mainnet-v1.0', 'testnet-v1.0').
+</ParamField>
+
+<ParamField path="genesisHash" type="string" optional>
+  Base64-encoded genesis hash of the Algorand network.
+</ParamField>
+
+<ParamField path="accounts" type="string[]" optional>
+  Array of specific account addresses to request access to.
+</ParamField>
+
+## Type definition
+
+```typescript
+export type ExodusOptions = {
+  genesisID?: string
+  genesisHash?: string
+  accounts?: string[]
+}
+```
+
+## Features
+
+### Browser extension integration
+
+Exodus integrates via the browser extension's injected `window.algorand` provider, following the ARC-0001 standard.
+
+### Multi-chain support
+
+Exodus supports multiple blockchains. Users can manage Algorand assets alongside other cryptocurrencies.
+
+### Hardware wallet support
+
+Exodus can be used with hardware wallets like Trezor for enhanced security.
+
+## Methods
+
+### connect()
+
+Initiates connection to the Exodus browser extension. Prompts the user to approve the connection.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects from Exodus. Note that the extension remains authorized until the user manually revokes access.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using Exodus. Opens the extension popup for user approval.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+## Session management
+
+Exodus sessions are managed by the browser extension. The `isConnected` state persists as long as the extension has authorized access to your dApp.
+
+## Requirements
+
+- Exodus browser extension must be installed
+- Extension must support Algorand (available in Chromium-based browsers)
+
+## Platform support
+
+- **Web:** Full support (Chromium browsers)
+- **Mobile:** Not supported
+- **Desktop:** Full support (via browser extension)
+
+## API reference
+
+Exodus implements the Algorand Provider ARC API. See the [official documentation](https://docs.exodus.com/api-reference/algorand-provider-arc-api/) for more details.
+
+## Source code
+
+View the Exodus wallet implementation: [exodus.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/exodus.ts)

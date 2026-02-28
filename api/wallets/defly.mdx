@@ -1,0 +1,116 @@
+---
+title: Defly wallet
+description: API reference for the Defly wallet provider in use-wallet
+---
+
+The Defly wallet provider enables integration with [Defly Wallet](https://defly.app/), a feature-rich Algorand wallet with DeFi capabilities.
+
+## Installation
+
+Install the required peer dependency:
+
+```bash
+npm install @blockshake/defly-connect
+```
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.DEFLY,
+    {
+      id: WalletId.DEFLY,
+      options: { shouldShowSignTxnToast: false }
+    }
+  ]
+})
+```
+
+## Configuration
+
+The Defly wallet accepts the following configuration options:
+
+<ParamField path="bridge" type="string" optional>
+  Custom WalletConnect bridge URL. Defaults to the standard Defly bridge.
+</ParamField>
+
+<ParamField path="shouldShowSignTxnToast" type="boolean" optional default="true">
+  Whether to show a toast notification when signing transactions.
+</ParamField>
+
+<ParamField path="chainId" type="416001 | 416002 | 416003 | 4160" optional>
+  Chain ID for the Algorand network:
+  - `416001`: MainNet
+  - `416002`: TestNet
+  - `416003`: BetaNet
+  - `4160`: Custom network
+</ParamField>
+
+## Type definition
+
+```typescript
+export interface DeflyWalletConnectOptions {
+  bridge?: string
+  shouldShowSignTxnToast?: boolean
+  chainId?: 416001 | 416002 | 416003 | 4160
+}
+```
+
+## Features
+
+### Multi-account support
+
+Defly Wallet supports connecting multiple accounts. All connected accounts are available through the wallet state.
+
+### Mobile deep linking
+
+On mobile devices, Defly Wallet uses deep linking to open the native app for transaction signing.
+
+### DeFi integration
+
+Defly Wallet includes built-in DeFi features and swap functionality for enhanced user experience.
+
+## Methods
+
+### connect()
+
+Initiates connection to Defly Wallet. Opens the Defly connection modal.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects from Defly Wallet and clears the session.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using Defly Wallet. See [signing transactions](/api-reference/signing-transactions) for details.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+## Session management
+
+Defly Wallet uses WalletConnect for session management. Sessions persist across page reloads and are automatically restored when the app initializes.
+
+## WalletConnect session handling
+
+Defly and Pera wallets share WalletConnect infrastructure. use-wallet manages session switching automatically when toggling between these wallets.
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Full support via deep linking
+- **Desktop:** Full support
+
+## Source code
+
+View the Defly wallet implementation: [defly.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/defly.ts)

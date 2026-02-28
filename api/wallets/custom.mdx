@@ -1,0 +1,351 @@
+---
+title: Custom wallet
+description: API reference for the Custom wallet provider in use-wallet
+---
+
+The Custom wallet provider enables integration with any wallet implementation by providing a flexible adapter interface. This allows you to integrate wallets that aren't natively supported by use-wallet.
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+import type { CustomProvider } from '@txnlab/use-wallet'
+
+const myCustomProvider: CustomProvider = {
+  connect: async (args) => {
+    // Connect to your custom wallet
+    const addresses = await myWallet.connect()
+    return addresses.map((address, idx) => ({
+      name: `Account ${idx + 1}`,
+      address
+    }))
+  },
+  disconnect: async () => {
+    await myWallet.disconnect()
+  },
+  signTransactions: async (txnGroup, indexesToSign) => {
+    // Sign transactions with your wallet
+    return await myWallet.signTxns(txnGroup, indexesToSign)
+  }
+}
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.CUSTOM,
+      options: { provider: myCustomProvider },
+      metadata: {
+        name: 'My Custom Wallet',
+        icon: 'data:image/svg+xml;base64,...'
+      }
+    }
+  ]
+})
+```
+
+## Configuration
+
+<ParamField path="provider" type="CustomProvider" required>
+  A custom provider object implementing the wallet interface. See [Provider interface](#provider-interface) for details.
+</ParamField>
+
+## Provider interface
+
+Your custom provider must implement the following interface:
+
+```typescript
+export type CustomProvider = {
+  // Required
+  connect(args?: Record<string, any>): Promise<WalletAccount[]>
+  
+  // Optional
+  disconnect?(): Promise<void>
+  resumeSession?(): Promise<WalletAccount[] | void>
+  signTransactions?<T extends algosdk.Transaction[] | Uint8Array[]>(
+    txnGroup: T | T[],
+    indexesToSign?: number[]
+  ): Promise<(Uint8Array | null)[]>
+  transactionSigner?(
+    txnGroup: algosdk.Transaction[],
+    indexesToSign: number[]
+  ): Promise<Uint8Array[]>
+  signData?(data: string, metadata: SignMetadata): Promise<SignDataResponse>
+}
+
+export type WalletAccount = {
+  name: string
+  address: string
+}
+```
+
+### Required methods
+
+<ParamField path="connect" type="(args?: Record<string, any>) => Promise<WalletAccount[]>" required>
+  Initiates connection to your wallet. Must return an array of wallet accounts.
+  
+  **Parameters:**
+  - `args`: Optional connection arguments passed from the caller
+  
+  **Returns:** Array of `WalletAccount` objects with `name` and `address`
+  
+  **Example:**
+  ```typescript
+  connect: async (args) => {
+    const addresses = await myWalletSDK.enable(args)
+    return addresses.map((addr, i) => ({
+      name: `Account ${i + 1}`,
+      address: addr
+    }))
+  }
+  ```
+</ParamField>
+
+### Optional methods
+
+<ParamField path="disconnect" type="() => Promise<void>" optional>
+  Disconnects from your wallet. If not provided, the wallet can only be disconnected by removing it from state.
+</ParamField>
+
+<ParamField path="resumeSession" type="() => Promise<WalletAccount[] | void>" optional>
+  Resumes a previous wallet session. Called when the app initializes with cached wallet state.
+  
+  **Returns:**
+  - `WalletAccount[]`: Array of accounts if session is valid
+  - `void`: If session is valid but accounts unchanged
+  - Throw error if session is invalid
+  
+  **Example:**
+  ```typescript
+  resumeSession: async () => {
+    const isConnected = await myWalletSDK.isConnected()
+    if (!isConnected) {
+      throw new Error('Session expired')
+    }
+    // Return updated accounts or void if unchanged
+  }
+  ```
+</ParamField>
+
+<ParamField path="signTransactions" type="<T>(txnGroup: T | T[], indexesToSign?: number[]) => Promise<(Uint8Array | null)[]>" optional>
+  Signs transactions according to ARC-0001 standard.
+  
+  **Parameters:**
+  - `txnGroup`: Transaction(s) to sign (Transaction[] or Uint8Array[])
+  - `indexesToSign`: Optional indexes of transactions to sign
+  
+  **Returns:** Array of signed transactions (Uint8Array) or null for unsigned
+  
+  **Example:**
+  ```typescript
+  signTransactions: async (txnGroup, indexesToSign) => {
+    const signedTxns = await myWalletSDK.signTxns(
+      txnGroup,
+      indexesToSign
+    )
+    return signedTxns
+  }
+  ```
+</ParamField>
+
+<ParamField path="transactionSigner" type="(txnGroup: algosdk.Transaction[], indexesToSign: number[]) => Promise<Uint8Array[]>" optional>
+  Alternative transaction signing method used by algosdk's `AtomicTransactionComposer`.
+  
+  **Parameters:**
+  - `txnGroup`: Array of Transaction objects
+  - `indexesToSign`: Indexes to sign (not optional)
+  
+  **Returns:** Array of signed transactions (no nulls)
+  
+  **Note:** This is used when calling `makeAssetTransferTxnWithSuggestedParamsFromObject().signTxn()` and similar SDK methods.
+</ParamField>
+
+<ParamField path="signData" type="(data: string, metadata: SignMetadata) => Promise<SignDataResponse>" optional>
+  Signs arbitrary data for authentication or verification.
+  
+  **Parameters:**
+  - `data`: Base64-encoded data to sign
+  - `metadata`: Signing metadata (scope, encoding)
+  
+  **Returns:** Signature response with signed data
+  
+  **Example:**
+  ```typescript
+  signData: async (data, metadata) => {
+    const signature = await myWalletSDK.signData(data)
+    return {
+      data,
+      signature,
+      signer: signerPublicKey,
+      domain: metadata.domain,
+      authenticatorData: new Uint8Array()
+    }
+  }
+  ```
+</ParamField>
+
+## Features
+
+### Flexible integration
+
+The Custom provider adapts any wallet implementation to work with use-wallet's standardized interface.
+
+### Custom metadata
+
+Provide custom name and icon for your wallet:
+
+```typescript
+{
+  id: WalletId.CUSTOM,
+  options: { provider: myProvider },
+  metadata: {
+    name: 'My Wallet',
+    icon: 'data:image/svg+xml;base64,PHN2Zy4uLg=='
+  }
+}
+```
+
+### Method validation
+
+The Custom wallet validates that required methods are implemented and throws errors for missing optional methods if called.
+
+## Methods
+
+### connect()
+
+Calls your provider's `connect()` method with optional arguments.
+
+**Parameters:**
+- `args?`: Optional arguments to pass to your provider
+
+**Returns:** `Promise<WalletAccount[]>`
+
+**Example:**
+
+```typescript
+await wallet.connect({ network: 'testnet' })
+```
+
+### disconnect()
+
+Calls your provider's `disconnect()` method if implemented.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Calls your provider's `signTransactions()` method if implemented.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+**Throws:** `Error: 'Method not supported: signTransactions'` if not implemented
+
+### transactionSigner()
+
+Calls your provider's `transactionSigner()` method if implemented.
+
+**Parameters:**
+- `txnGroup`: Array of Transaction objects
+- `indexesToSign`: Array of indexes to sign
+
+**Returns:** `Promise<Uint8Array[]>`
+
+**Throws:** `Error: 'Method not supported: transactionSigner'` if not implemented
+
+### signData()
+
+Calls your provider's `signData()` method if implemented.
+
+**Parameters:**
+- `data`: Base64-encoded data to sign
+- `metadata`: Signing metadata
+
+**Returns:** `Promise<SignDataResponse>`
+
+**Throws:** `Error: 'Method not supported: signData'` if not implemented
+
+## Session management
+
+Session management behavior depends on your provider's `resumeSession()` implementation:
+
+- If `resumeSession` is implemented, it's called when the app initializes
+- If not implemented, the wallet relies on cached state from localStorage
+- If `resumeSession` throws an error, the wallet is disconnected
+
+## Complete example
+
+Here's a complete example integrating a hypothetical wallet SDK:
+
+```typescript
+import { WalletId, type CustomProvider, type WalletAccount } from '@txnlab/use-wallet'
+import HypotheticalWalletSDK from 'hypothetical-wallet-sdk'
+
+const hypotheticalProvider: CustomProvider = {
+  connect: async (args) => {
+    const sdk = new HypotheticalWalletSDK()
+    const addresses = await sdk.connect(args)
+    
+    return addresses.map((address: string, idx: number): WalletAccount => ({
+      name: `Hypothetical Account ${idx + 1}`,
+      address
+    }))
+  },
+
+  disconnect: async () => {
+    const sdk = new HypotheticalWalletSDK()
+    await sdk.disconnect()
+  },
+
+  resumeSession: async () => {
+    const sdk = new HypotheticalWalletSDK()
+    const isConnected = await sdk.isConnected()
+    
+    if (!isConnected) {
+      throw new Error('Session expired')
+    }
+    
+    // Return updated accounts if needed
+    const addresses = await sdk.getAccounts()
+    return addresses.map((address: string, idx: number): WalletAccount => ({
+      name: `Hypothetical Account ${idx + 1}`,
+      address
+    }))
+  },
+
+  signTransactions: async (txnGroup, indexesToSign) => {
+    const sdk = new HypotheticalWalletSDK()
+    return await sdk.signTransactions(txnGroup, indexesToSign)
+  },
+
+  transactionSigner: async (txnGroup, indexesToSign) => {
+    const sdk = new HypotheticalWalletSDK()
+    const signedTxns = await sdk.signTransactions(txnGroup, indexesToSign)
+    // Filter out nulls for transactionSigner
+    return signedTxns.filter((txn): txn is Uint8Array => txn !== null)
+  }
+}
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.CUSTOM,
+      options: { provider: hypotheticalProvider },
+      metadata: {
+        name: 'Hypothetical Wallet',
+        icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiLz4='
+      }
+    }
+  ]
+})
+```
+
+## Platform support
+
+Platform support depends on your custom provider's implementation.
+
+## Source code
+
+View the Custom wallet implementation: [custom.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/custom.ts)

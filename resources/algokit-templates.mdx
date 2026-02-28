@@ -1,0 +1,217 @@
+---
+title: AlgoKit templates
+description: Using use-wallet with AlgoKit templates for rapid Algorand dApp development
+---
+
+AlgoKit is the official toolkit for building applications on Algorand. The use-wallet library integrates seamlessly with AlgoKit templates and workflows, providing a robust foundation for wallet connectivity in your Algorand dApps.
+
+## What is AlgoKit?
+
+[AlgoKit](https://algorand.co/algokit) is a comprehensive development toolkit that streamlines building on Algorand. It provides:
+
+- Project templates with best practices
+- CLI tools for development workflow
+- Testing and debugging utilities
+- Deployment and configuration management
+
+## Using use-wallet with AlgoKit
+
+While AlgoKit doesn't currently provide official templates that include use-wallet out of the box, the library is designed to integrate seamlessly with AlgoKit-generated projects.
+
+### Integration with AlgoKit Utils
+
+use-wallet works perfectly alongside [AlgoKit Utils](https://github.com/algorandfoundation/algokit-utils-ts), providing wallet connectivity while AlgoKit Utils handles transaction composition and smart contract interactions.
+
+```typescript
+import { AlgorandClient } from '@algorandfoundation/algokit-utils'
+import { useWallet } from '@txnlab/use-wallet-react'
+
+function MyComponent() {
+  const { activeAddress, transactionSigner, algodClient } = useWallet()
+
+  const algorand = AlgorandClient.fromClients({
+    algod: algodClient,
+    indexer: indexerClient
+  })
+
+  // Set the signer from use-wallet
+  algorand.setDefaultSigner(transactionSigner)
+
+  // Now you can use AlgorandClient with wallet signing
+  const result = await algorand.send.payment({
+    sender: activeAddress,
+    receiver: receiverAddress,
+    amount: (1000).microAlgo()
+  })
+}
+```
+
+### KMD wallet for local development
+
+use-wallet includes support for the KMD (Key Management Daemon) wallet, which is essential when working with AlgoKit's local development environment.
+
+```typescript
+import { NetworkId, WalletId, WalletManager } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.KMD, // For AlgoKit LocalNet development
+    WalletId.PERA,
+    WalletId.DEFLY,
+    // ... other wallets
+  ],
+  defaultNetwork: NetworkId.LOCALNET
+})
+```
+
+The KMD wallet connects to the key management daemon that runs as part of AlgoKit's LocalNet, allowing you to access pre-funded development accounts.
+
+For more information, see the [KMD wallet documentation](/wallets/kmd).
+
+## AlgorandClient integration
+
+The `transactionSigner` provided by use-wallet is fully compatible with AlgoKit Utils' `AlgorandClient` and typed application clients.
+
+<Accordion title="Example with AlgorandClient">
+```typescript
+import { AlgorandClient } from '@algorandfoundation/algokit-utils'
+import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
+
+function SendTransaction() {
+  const { activeAddress, transactionSigner, algodClient } = useWallet()
+
+  const sendPayment = async () => {
+    const algorand = AlgorandClient.fromClients({ algod: algodClient })
+    algorand.setDefaultSigner(transactionSigner)
+
+    const result = await algorand.send.payment({
+      sender: activeAddress!,
+      receiver: 'RECEIVER_ADDRESS',
+      amount: algosdk.algosToMicroalgos(1)
+    })
+
+    console.log('Transaction ID:', result.txIds[0])
+  }
+
+  return (
+    <button onClick={sendPayment}>
+      Send Payment
+    </button>
+  )
+}
+```
+</Accordion>
+
+<Accordion title="Example with typed application clients">
+```typescript
+import { useWallet } from '@txnlab/use-wallet-react'
+import { MyContractClient } from './contracts/MyContract'
+
+function CallContract() {
+  const { activeAddress, transactionSigner, algodClient } = useWallet()
+
+  const callMethod = async () => {
+    const client = new MyContractClient(
+      {
+        sender: { addr: activeAddress!, signer: transactionSigner },
+        resolveBy: 'id',
+        id: APP_ID
+      },
+      algodClient
+    )
+
+    const result = await client.myMethod({
+      args: { /* method arguments */ }
+    })
+
+    console.log('Result:', result.return)
+  }
+
+  return (
+    <button onClick={callMethod}>
+      Call Contract
+    </button>
+  )
+}
+```
+</Accordion>
+
+## Testing with AlgoKit
+
+When testing AlgoKit projects, use-wallet's mnemonic wallet provider is invaluable for automated testing.
+
+```typescript
+import { NetworkId, WalletId, WalletManager } from '@txnlab/use-wallet'
+
+// In your test setup
+const walletManager = new WalletManager({
+  wallets: [WalletId.MNEMONIC],
+  defaultNetwork: NetworkId.LOCALNET
+})
+
+const mnemonicWallet = walletManager.wallets?.find(
+  (w) => w.id === WalletId.MNEMONIC
+)
+
+await mnemonicWallet?.connect({
+  mnemonic: 'your test account mnemonic'
+})
+```
+
+For more details, see the [Testing with mnemonic wallet](/guides/testing-with-mnemonic-wallet) guide.
+
+## Network configuration
+
+use-wallet supports all Algorand networks that AlgoKit works with:
+
+- **LocalNet**: AlgoKit's local development network
+- **TestNet**: Algorand's public test network
+- **MainNet**: Algorand's main production network
+
+```typescript
+import { NetworkId } from '@txnlab/use-wallet'
+
+// Configure for LocalNet (AlgoKit default)
+const walletManager = new WalletManager({
+  wallets: [/* ... */],
+  defaultNetwork: NetworkId.LOCALNET,
+  networks: {
+    [NetworkId.LOCALNET]: {
+      algod: {
+        baseUrl: 'http://localhost',
+        port: 4001,
+        token: 'a'.repeat(64)
+      },
+      indexer: {
+        baseUrl: 'http://localhost',
+        port: 8980,
+        token: 'a'.repeat(64)
+      }
+    }
+  }
+})
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="AlgoKit documentation" icon="book" href="https://developer.algorand.org/docs/get-details/algokit/">
+    Official AlgoKit documentation
+  </Card>
+  <Card title="AlgoKit Utils" icon="code" href="https://github.com/algorandfoundation/algokit-utils-ts">
+    AlgoKit Utils TypeScript library
+  </Card>
+  <Card title="Signing transactions" icon="pen" href="/guides/signing-transactions">
+    Learn how to sign transactions with use-wallet
+  </Card>
+  <Card title="Runtime node configuration" icon="gear" href="/guides/runtime-node-configuration">
+    Configure network settings at runtime
+  </Card>
+</CardGroup>
+
+## Next steps
+
+- Explore the [signing transactions](/guides/signing-transactions) guide to learn how to integrate with AlgoKit Utils
+- Check out the [example projects](/resources/examples) to see use-wallet in action
+- Read about [switching networks](/guides/switching-networks) to handle multiple environments

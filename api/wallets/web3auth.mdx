@@ -1,0 +1,329 @@
+---
+title: Web3Auth wallet
+description: API reference for the Web3Auth wallet provider in use-wallet
+---
+
+The Web3Auth wallet provider enables integration with [Web3Auth](https://web3auth.io/), a service that allows users to authenticate with social logins (Google, Facebook, etc.) or custom JWT authentication.
+
+## Installation
+
+Install the required peer dependencies:
+
+```bash
+npm install @web3auth/modal @web3auth/base @web3auth/base-provider
+```
+
+For custom authentication (Single Factor Auth):
+
+```bash
+npm install @web3auth/single-factor-auth @web3auth/base @web3auth/base-provider
+```
+
+## Basic usage
+
+### Standard modal (social login)
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.WEB3AUTH,
+      options: {
+        clientId: 'YOUR_WEB3AUTH_CLIENT_ID'
+      }
+    }
+  ]
+})
+
+// Connect with modal
+await wallet.connect()
+```
+
+### Custom authentication (Firebase, Auth0, etc.)
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+import { getAuth } from 'firebase/auth'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.WEB3AUTH,
+      options: {
+        clientId: 'YOUR_WEB3AUTH_CLIENT_ID',
+        web3AuthNetwork: 'sapphire_mainnet',
+        verifier: 'my-firebase-verifier',
+        getAuthCredentials: async () => {
+          const user = getAuth().currentUser
+          if (!user) throw new Error('Not logged in')
+          const idToken = await user.getIdToken(true)
+          return {
+            idToken,
+            verifierId: user.email || user.uid
+          }
+        }
+      }
+    }
+  ]
+})
+
+// Connect with custom auth
+const user = getAuth().currentUser
+const idToken = await user.getIdToken()
+await wallet.connect({
+  idToken,
+  verifierId: user.email || user.uid
+})
+```
+
+## Configuration
+
+### Required options
+
+<ParamField path="clientId" type="string" required>
+  Your Web3Auth client ID from the [Web3Auth Dashboard](https://dashboard.web3auth.io).
+</ParamField>
+
+### Optional options
+
+<ParamField path="web3AuthNetwork" type="string" optional default="sapphire_mainnet">
+  Web3Auth network to use:
+  - `mainnet`: Production network
+  - `testnet`: Test network
+  - `sapphire_mainnet`: Sapphire mainnet (recommended)
+  - `sapphire_devnet`: Sapphire development network
+  - `cyan`: Cyan network
+  - `aqua`: Aqua network
+</ParamField>
+
+<ParamField path="loginProvider" type="string" optional>
+  Specify a login provider to skip the modal:
+  - `google`, `facebook`, `twitter`, `discord`, `reddit`, `twitch`, `apple`
+  - `line`, `github`, `kakao`, `linkedin`, `weibo`, `wechat`
+  - `email_passwordless`, `sms_passwordless`
+</ParamField>
+
+<ParamField path="loginHint" type="string" optional>
+  Pre-fill email or phone number for passwordless login.
+</ParamField>
+
+<ParamField path="uiConfig" type="object" optional>
+  Customize the Web3Auth modal appearance:
+  - `appName`: Your app name
+  - `appUrl`: Your app URL
+  - `logoLight`: Light theme logo URL
+  - `logoDark`: Dark theme logo URL
+  - `defaultLanguage`: UI language code
+  - `mode`: `'light'`, `'dark'`, or `'auto'`
+  - `theme`: Custom CSS variable overrides
+</ParamField>
+
+<ParamField path="usePopup" type="boolean" optional default="true">
+  Use popup flow instead of redirect flow.
+</ParamField>
+
+<ParamField path="verifier" type="string" optional>
+  Default verifier name for custom authentication. When set, `connect()` can be called with just `idToken` and `verifierId`.
+</ParamField>
+
+<ParamField path="getAuthCredentials" type="() => Promise<Web3AuthCredentials>" optional>
+  Callback to get fresh authentication credentials when the session expires. Required for automatic re-authentication with Single Factor Auth (SFA).
+  
+  **Returns:**
+  - `idToken`: JWT token from your auth provider
+  - `verifierId`: User identifier (email, uid, etc.)
+  - `verifier?`: Custom verifier name (optional, uses `options.verifier` if not provided)
+  
+  **Example with Firebase:**
+  ```typescript
+  getAuthCredentials: async () => {
+    const user = getAuth().currentUser
+    if (!user) throw new Error('Not logged in')
+    const idToken = await user.getIdToken(true)
+    return { idToken, verifierId: user.email || user.uid }
+  }
+  ```
+</ParamField>
+
+## Type definitions
+
+```typescript
+export interface Web3AuthOptions {
+  clientId: string
+  web3AuthNetwork?: 'mainnet' | 'testnet' | 'sapphire_mainnet' | 'sapphire_devnet' | 'cyan' | 'aqua'
+  loginProvider?: 'google' | 'facebook' | 'twitter' | 'discord' | 'reddit' | 'twitch' |
+                  'apple' | 'line' | 'github' | 'kakao' | 'linkedin' | 'weibo' | 'wechat' |
+                  'email_passwordless' | 'sms_passwordless'
+  loginHint?: string
+  uiConfig?: {
+    appName?: string
+    appUrl?: string
+    logoLight?: string
+    logoDark?: string
+    defaultLanguage?: string
+    mode?: 'light' | 'dark' | 'auto'
+    theme?: Record<string, string>
+  }
+  usePopup?: boolean
+  verifier?: string
+  getAuthCredentials?: () => Promise<Web3AuthCredentials>
+}
+
+export interface Web3AuthCredentials {
+  idToken: string
+  verifierId: string
+  verifier?: string
+}
+```
+
+## Features
+
+### Social login
+
+Users can authenticate with their existing social accounts (Google, Facebook, Twitter, etc.) without managing private keys directly.
+
+### Custom authentication
+
+Integrate with your existing authentication system (Firebase, Auth0, Cognito, etc.) using JWT tokens.
+
+### Lazy authentication
+
+Sessions are restored from cache without requiring immediate re-authentication. Web3Auth connection is deferred until signing is needed.
+
+### Automatic re-authentication
+
+When `getAuthCredentials` is configured, the wallet automatically re-authenticates when the session expires, providing a seamless user experience.
+
+### Private key access
+
+The Web3Auth wallet supports the `withPrivateKey` method for advanced use cases that require direct private key access:
+
+```typescript
+const result = await wallet.withPrivateKey(async (secretKey) => {
+  // secretKey is a 64-byte Uint8Array
+  // Use for custom signing, encryption, etc.
+  return customOperation(secretKey)
+})
+// secretKey is automatically zeroed after callback completes
+```
+
+## Methods
+
+### connect()
+
+Initiates Web3Auth connection. Opens the modal for social login or uses custom authentication.
+
+**Parameters (optional):**
+- `idToken?`: JWT token for custom authentication
+- `verifierId?`: User identifier for custom authentication
+- `verifier?`: Custom verifier name (overrides `options.verifier`)
+
+**Returns:** `Promise<WalletAccount[]>`
+
+**Examples:**
+
+```typescript
+// Social login (modal)
+await wallet.connect()
+
+// Custom authentication
+await wallet.connect({
+  idToken: firebaseIdToken,
+  verifierId: user.email
+})
+```
+
+### disconnect()
+
+Disconnects from Web3Auth and clears the session.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using the Web3Auth-managed private key. Automatically re-authenticates if the session has expired.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+### withPrivateKey()
+
+Provides scoped access to the private key via a callback. The key is fetched fresh from Web3Auth and automatically zeroed after use.
+
+**Parameters:**
+- `callback`: Async function that receives the 64-byte Algorand secret key
+
+**Returns:** `Promise<T>` - Returns the result of the callback
+
+**Security:** The private key is never cached and is zeroed from memory immediately after the callback completes.
+
+## Session management
+
+Web3Auth uses a sophisticated session management system:
+
+1. **Initial connection:** User authenticates with social login or custom auth
+2. **Caching:** Address is cached in localStorage, private key is never stored
+3. **Lazy restore:** On app reload, cached address is restored without Web3Auth connection
+4. **Deferred authentication:** Web3Auth connection happens only when signing is needed
+5. **Auto re-auth:** If session expired, automatically re-authenticates using `getAuthCredentials`
+
+## Security considerations
+
+<Info>
+  **Key Security:**
+  - Private keys are never persisted to localStorage
+  - Keys are fetched fresh from Web3Auth for each signing operation
+  - Keys are immediately cleared from memory after use
+  - `withPrivateKey` provides controlled, time-limited access to keys
+</Info>
+
+<Warning>
+  **Session expiration:**
+  - Without `getAuthCredentials`, users must manually re-authenticate when sessions expire
+  - With `getAuthCredentials`, automatic re-authentication requires the user is still logged in to your auth provider
+  - If the user logged out of Firebase/Auth0/etc., the wallet will disconnect
+</Warning>
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Full support (mobile web)
+- **Desktop:** Full support
+
+## Authentication flows
+
+### Social login flow
+
+1. User clicks connect
+2. Web3Auth modal opens
+3. User selects social provider and authenticates
+4. Web3Auth generates/retrieves the key shard
+5. Algorand address is derived and cached
+
+### Custom auth flow (SFA)
+
+1. User authenticates with your system (Firebase, Auth0, etc.)
+2. Your app gets JWT token
+3. `connect()` called with `idToken` and `verifierId`
+4. Web3Auth Single Factor Auth generates/retrieves key shard
+5. Algorand address is derived and cached
+
+### Re-authentication flow
+
+1. User reloads app
+2. Address restored from cache (no Web3Auth connection yet)
+3. User attempts to sign transaction
+4. If session expired:
+   - `getAuthCredentials()` called to get fresh JWT
+   - Web3Auth reconnects with fresh credentials
+   - Address verified to match cached address
+   - Transaction signed
+
+## Source code
+
+View the Web3Auth wallet implementation: [web3auth.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/web3auth.ts)

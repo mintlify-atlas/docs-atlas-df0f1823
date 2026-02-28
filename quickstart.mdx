@@ -1,80 +1,527 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get up and running with use-wallet in minutes with this step-by-step guide
 ---
 
-## Get started in three steps
+# Quick start
 
-Get your documentation site running locally and make your first customization.
+This guide will get you up and running with wallet connections in just a few minutes. We'll walk through a React example, but the concepts apply to all frameworks.
 
-### Step 1: Set up your local environment
+## Step 1: Install dependencies
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+First, install the React adapter and algosdk:
+
+<CodeGroup>
+
+```bash npm
+npm install @txnlab/use-wallet-react algosdk
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet-react algosdk
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet-react algosdk
+```
+
+</CodeGroup>
+
+Then install wallet provider packages for the wallets you want to support. For this example, we'll use Pera and Defly:
+
+```bash
+npm install @perawallet/connect @blockshake/defly-connect
+```
+
+## Step 2: Create a wallet manager
+
+Create a `WalletManager` instance and configure which wallets to support:
+
+```tsx App.tsx
+import { NetworkId, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.PERA,
+    WalletId.DEFLY,
+    {
+      id: WalletId.WALLETCONNECT,
+      options: { projectId: 'YOUR_PROJECT_ID' }
+    }
+  ],
+  defaultNetwork: NetworkId.TESTNET
+})
+
+function App() {
+  return (
+    <WalletProvider manager={walletManager}>
+      <YourApp />
+    </WalletProvider>
+  )
+}
+```
+
+<Note>
+The `WalletProvider` automatically calls `resumeSessions()` to restore wallet connections when your app loads.
+</Note>
+
+### Configuration options
+
+The `WalletManager` constructor accepts:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `wallets` | `SupportedWallet[]` | Array of wallet IDs or config objects |
+| `defaultNetwork` | `string` | Network to use on initialization (default: `'testnet'`) |
+| `networks` | `Record<string, NetworkConfig>` | Custom network configurations |
+| `options.resetNetwork` | `boolean` | Reset to `defaultNetwork` on each load |
+| `options.logLevel` | `LogLevel` | Control console output |
+| `options.debug` | `boolean` | Enable debug logging |
+
+## Step 3: Use the wallet hook
+
+Use the `useWallet()` hook to access wallet state and methods:
+
+```tsx Connect.tsx
+import { useWallet } from '@txnlab/use-wallet-react'
+
+export function Connect() {
+  const { wallets, activeAccount } = useWallet()
+
+  return (
+    <div>
+      <h2>Connect Wallet</h2>
+      
+      {wallets.map((wallet) => (
+        <div key={wallet.id}>
+          <h4>{wallet.metadata.name}</h4>
+          
+          <button 
+            onClick={() => wallet.connect()}
+            disabled={wallet.isConnected}
+          >
+            Connect
+          </button>
+          
+          <button 
+            onClick={() => wallet.disconnect()}
+            disabled={!wallet.isConnected}
+          >
+            Disconnect
+          </button>
+          
+          {wallet.isConnected && !wallet.isActive && (
+            <button onClick={() => wallet.setActive()}>
+              Set Active
+            </button>
+          )}
+        </div>
+      ))}
+      
+      {activeAccount && (
+        <div>
+          <p>Active Account: {activeAccount.address}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+### Hook return values
+
+The `useWallet()` hook returns:
+
+```typescript
+interface UseWalletReturn {
+  // Status
+  isReady: boolean
+  
+  // Wallets
+  wallets: Wallet[]
+  activeWallet: Wallet | null
+  
+  // Accounts
+  activeWalletAccounts: WalletAccount[] | null
+  activeWalletAddresses: string[] | null
+  activeAccount: WalletAccount | null
+  activeAddress: string | null
+  
+  // Algod client
+  algodClient: algosdk.Algodv2
+  setAlgodClient: (client: algosdk.Algodv2) => void
+  
+  // Transaction signing
+  signTransactions: (txns: Transaction[] | Uint8Array[]) => Promise<(Uint8Array | null)[]>
+  transactionSigner: algosdk.TransactionSigner
+  
+  // Data signing (ARC-0076)
+  signData: (data: string, metadata: SignMetadata) => Promise<SignDataResponse>
+  
+  // Private key access (for specific wallets)
+  withPrivateKey: <T>(callback: (key: Uint8Array) => Promise<T>) => Promise<T>
+}
+```
+
+## Step 4: Sign and send transactions
+
+Use the `transactionSigner` with AlgoSDK's `AtomicTransactionComposer`:
+
+```tsx SendTransaction.tsx
+import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
+import { useState } from 'react'
+
+export function SendTransaction() {
+  const { algodClient, activeAddress, transactionSigner } = useWallet()
+  const [txId, setTxId] = useState<string>()
+
+  const sendTransaction = async () => {
+    if (!activeAddress) {
+      throw new Error('No active account')
+    }
+
+    // Create a transaction
+    const suggestedParams = await algodClient.getTransactionParams().do()
+    const transaction = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: activeAddress,
+      receiver: activeAddress,
+      amount: 1_000_000, // 1 ALGO
+      suggestedParams
+    })
+
+    // Use AtomicTransactionComposer
+    const atc = new algosdk.AtomicTransactionComposer()
+    atc.addTransaction({ txn: transaction, signer: transactionSigner })
+
+    // Execute transaction
+    const result = await atc.execute(algodClient, 4)
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    console.log('Transaction successful!', result.txIDs)
+    setTxId(result.txIDs[0])
+  }
+
+  return (
+    <div>
+      <button onClick={sendTransaction} disabled={!activeAddress}>
+        Send 1 ALGO to self
+      </button>
+      
+      {txId && (
+        <p>
+          Transaction ID: <code>{txId}</code>
+        </p>
+      )}
+    </div>
+  )
+}
+```
+
+<Note>
+The `transactionSigner` automatically handles wallet-specific signing and only signs transactions that require the active account's signature.
+</Note>
+
+## Step 5: Switch networks
+
+Use the `useNetwork()` hook to manage network configuration:
+
+```tsx NetworkSelector.tsx
+import { useNetwork } from '@txnlab/use-wallet-react'
+import { NetworkId } from '@txnlab/use-wallet-react'
+
+export function NetworkSelector() {
+  const { activeNetwork, setActiveNetwork } = useNetwork()
+
+  return (
+    <div>
+      <label>Network:</label>
+      <select 
+        value={activeNetwork} 
+        onChange={(e) => setActiveNetwork(e.target.value)}
+      >
+        <option value={NetworkId.MAINNET}>MainNet</option>
+        <option value={NetworkId.TESTNET}>TestNet</option>
+        <option value={NetworkId.BETANET}>BetaNet</option>
+        <option value={NetworkId.LOCALNET}>LocalNet</option>
+      </select>
+    </div>
+  )
+}
+```
+
+## Complete example
+
+Here's a complete working example combining all the pieces:
+
+```tsx main.tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+```
+
+```tsx App.tsx
+import {
+  NetworkId,
+  WalletId,
+  WalletManager,
+  WalletProvider,
+  useWallet
+} from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
+
+// Create wallet manager
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.DEFLY,
+    WalletId.PERA,
+    {
+      id: WalletId.WALLETCONNECT,
+      options: { projectId: 'fcfde0713d43baa0d23be0773c80a72b' }
+    }
+  ],
+  defaultNetwork: NetworkId.TESTNET
+})
+
+function WalletInterface() {
+  const { 
+    wallets, 
+    activeAddress, 
+    activeAccount,
+    algodClient,
+    transactionSigner 
+  } = useWallet()
+
+  const sendPayment = async () => {
+    if (!activeAddress) return
+
+    const suggestedParams = await algodClient.getTransactionParams().do()
+    const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: activeAddress,
+      receiver: activeAddress,
+      amount: 0,
+      suggestedParams
+    })
+
+    const atc = new algosdk.AtomicTransactionComposer()
+    atc.addTransaction({ txn, signer: transactionSigner })
+
+    const result = await atc.execute(algodClient, 4)
+    console.log('Success!', result.txIDs)
+  }
+
+  return (
+    <div>
+      <h1>Algorand Wallet Demo</h1>
+      
+      {/* Wallet Connection */}
+      <div>
+        <h2>Wallets</h2>
+        {wallets.map((wallet) => (
+          <div key={wallet.id} style={{ margin: '1rem 0' }}>
+            <strong>
+              {wallet.metadata.name}
+              {wallet.isActive && ' [active]'}
+            </strong>
+            <div>
+              <button
+                onClick={() => wallet.connect()}
+                disabled={wallet.isConnected}
+              >
+                Connect
+              </button>
+              <button
+                onClick={() => wallet.disconnect()}
+                disabled={!wallet.isConnected}
+              >
+                Disconnect
+              </button>
+              {wallet.isConnected && !wallet.isActive && (
+                <button onClick={() => wallet.setActive()}>
+                  Set Active
+                </button>
+              )}
+            </div>
+            
+            {/* Account Selection */}
+            {wallet.isActive && wallet.accounts.length > 0 && (
+              <select 
+                onChange={(e) => wallet.setActiveAccount(e.target.value)}
+                value={activeAccount?.address}
+              >
+                {wallet.accounts.map((account) => (
+                  <option key={account.address} value={account.address}>
+                    {account.address.slice(0, 8)}...
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        ))}
+      </div>
+      
+      {/* Transaction */}
+      {activeAddress && (
+        <div>
+          <h2>Active Account</h2>
+          <p><code>{activeAddress}</code></p>
+          <button onClick={sendPayment}>
+            Send 0 ALGO transaction
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <WalletProvider manager={walletManager}>
+      <WalletInterface />
+    </WalletProvider>
+  )
+}
+
+export default App
+```
+
+## Other frameworks
+
+The API is similar across all framework adapters:
+
+<Tabs>
+  <Tab title="Vue">
+    ```vue
+    <script setup lang="ts">
+    import { useWallet } from '@txnlab/use-wallet-vue'
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    const { wallets, activeAddress } = useWallet()
+    </script>
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    <template>
+      <div>
+        <div v-for="wallet in wallets" :key="wallet.id">
+          <h4>{{ wallet.metadata.name }}</h4>
+          <button @click="wallet.connect()" :disabled="wallet.isConnected">
+            Connect
+          </button>
+        </div>
+        
+        <p v-if="activeAddress">
+          Active: {{ activeAddress }}
+        </p>
+      </div>
+    </template>
+    ```
+  </Tab>
+  
+  <Tab title="SolidJS">
+    ```tsx
+    import { useWallet } from '@txnlab/use-wallet-solid'
+    
+    export function Connect() {
+      const { wallets, activeAddress } = useWallet()
+      
+      return (
+        <div>
+          <For each={wallets()}>
+            {(wallet) => (
+              <div>
+                <h4>{wallet.metadata.name}</h4>
+                <button 
+                  onClick={() => wallet.connect()}
+                  disabled={wallet.isConnected}
+                >
+                  Connect
+                </button>
+              </div>
+            )}
+          </For>
+          
+          <Show when={activeAddress()}>
+            <p>Active: {activeAddress()}</p>
+          </Show>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Svelte">
+    ```svelte
+    <script lang="ts">
+    import { useWallet } from '@txnlab/use-wallet-svelte'
+    
+    const { wallets, activeAddress } = useWallet()
+    </script>
+    
+    {#each $wallets as wallet}
+      <div>
+        <h4>{wallet.metadata.name}</h4>
+        <button 
+          on:click={() => wallet.connect()}
+          disabled={wallet.isConnected}
+        >
+          Connect
+        </button>
+      </div>
+    {/each}
+    
+    {#if $activeAddress}
+      <p>Active: {$activeAddress}</p>
+    {/if}
+    ```
+  </Tab>
+  
+  <Tab title="Vanilla TypeScript">
+    ```typescript
+    import { WalletManager, WalletId, NetworkId } from '@txnlab/use-wallet'
+    
+    const manager = new WalletManager({
+      wallets: [WalletId.PERA, WalletId.DEFLY],
+      defaultNetwork: NetworkId.TESTNET
+    })
+    
+    // Resume sessions
+    await manager.resumeSessions()
+    
+    // Connect wallet
+    const peraWallet = manager.getWallet(WalletId.PERA)
+    await peraWallet?.connect()
+    
+    // Subscribe to state changes
+    manager.subscribe((state) => {
+      console.log('Active wallet:', state.activeWallet)
+      console.log('Wallets:', state.wallets)
+    })
+    
+    // Sign transactions
+    const signedTxns = await manager.signTransactions([txn])
+    ```
+  </Tab>
+</Tabs>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Wallet configuration" icon="gear">
+    Learn about wallet-specific configuration options and features
+  </Card>
+  
+  <Card title="Network configuration" icon="network-wired">
+    Configure custom networks and algod clients
+  </Card>
+  
+  <Card title="Transaction signing" icon="signature">
+    Deep dive into signing single and grouped transactions
+  </Card>
+  
+  <Card title="API reference" icon="book">
+    Explore the complete API documentation
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

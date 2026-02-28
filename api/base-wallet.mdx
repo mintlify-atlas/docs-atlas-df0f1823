@@ -1,0 +1,348 @@
+---
+title: BaseWallet
+description: Abstract base class that all wallet implementations extend.
+---
+
+`BaseWallet` is the abstract base class that defines the common interface for all wallet providers in use-wallet. Each wallet implementation (Pera, Defly, WalletConnect, etc.) extends this class.
+
+## Properties
+
+### id
+
+```typescript
+readonly id: WalletId
+```
+
+The wallet's unique identifier from the `WalletId` enum.
+
+### walletKey
+
+```typescript
+readonly walletKey: WalletKey
+```
+
+Unique key for this wallet instance. Used for state storage and session isolation. For most wallets this is the same as `id`, but for skinned WalletConnect instances it follows the pattern `walletconnect:skinId`.
+
+### metadata
+
+```typescript
+readonly metadata: WalletMetadata
+```
+
+Wallet metadata including name and icon.
+
+<ResponseField name="name" type="string">
+  Display name for the wallet
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Wallet icon as a data URI or URL
+</ResponseField>
+
+### name
+
+```typescript
+get name(): string
+```
+
+Returns the uppercase wallet ID.
+
+### accounts
+
+```typescript
+get accounts(): WalletAccount[]
+```
+
+Returns the connected accounts for this wallet.
+
+### addresses
+
+```typescript
+get addresses(): string[]
+```
+
+Returns the addresses of connected accounts.
+
+### activeAccount
+
+```typescript
+get activeAccount(): WalletAccount | null
+```
+
+Returns the currently active account for this wallet, or `null` if no account is active.
+
+### activeAddress
+
+```typescript
+get activeAddress(): string | null
+```
+
+Returns the address of the active account, or `null` if no account is active.
+
+### activeNetwork
+
+```typescript
+get activeNetwork(): string
+```
+
+Returns the ID of the currently active network.
+
+### activeNetworkConfig
+
+```typescript
+get activeNetworkConfig(): NetworkConfig
+```
+
+Returns the configuration for the currently active network.
+
+### isConnected
+
+```typescript
+get isConnected(): boolean
+```
+
+Returns `true` if this wallet has connected accounts.
+
+### isActive
+
+```typescript
+get isActive(): boolean
+```
+
+Returns `true` if this is the currently active wallet.
+
+### canSignData
+
+```typescript
+canSignData: boolean
+```
+
+Indicates whether the wallet supports arbitrary data signing. Default is `false`.
+
+### canUsePrivateKey
+
+```typescript
+canUsePrivateKey: boolean
+```
+
+Indicates whether the wallet can provide access to private keys. Default is `false`. Only applicable to wallets like Mnemonic and Web3Auth.
+
+## Methods
+
+### connect
+
+```typescript
+abstract connect(args?: Record<string, any>): Promise<WalletAccount[]>
+```
+
+<ParamField path="args" type="Record<string, any>">
+  Optional wallet-specific connection arguments
+</ParamField>
+
+Initiates the wallet connection flow. Returns a promise that resolves with the connected accounts.
+
+```typescript
+const accounts = await wallet.connect()
+console.log('Connected accounts:', accounts)
+```
+
+### disconnect
+
+```typescript
+abstract disconnect(): Promise<void>
+```
+
+Disconnects the wallet and clears its session.
+
+```typescript
+await wallet.disconnect()
+```
+
+### resumeSession
+
+```typescript
+abstract resumeSession(): Promise<void>
+```
+
+Attempts to restore a previous wallet session. Called automatically by `WalletManager.resumeSessions()`.
+
+### setActive
+
+```typescript
+setActive(): void
+```
+
+Sets this wallet as the active wallet in the WalletManager.
+
+```typescript
+wallet.setActive()
+```
+
+### setActiveAccount
+
+```typescript
+setActiveAccount(address: string): void
+```
+
+<ParamField path="address" type="string" required>
+  The address of the account to set as active
+</ParamField>
+
+Sets the active account for this wallet.
+
+```typescript
+wallet.setActiveAccount('ABCD...XYZ')
+```
+
+### signTransactions
+
+```typescript
+abstract signTransactions<T extends algosdk.Transaction[] | Uint8Array[]>(
+  txnGroup: T | T[],
+  indexesToSign?: number[]
+): Promise<(Uint8Array | null)[]>
+```
+
+<ParamField path="txnGroup" type="algosdk.Transaction[] | Uint8Array[]" required>
+  Transaction or array of transactions to sign. Can be Transaction objects or encoded transactions
+</ParamField>
+
+<ParamField path="indexesToSign" type="number[]">
+  Optional array of indices indicating which transactions to sign. If not provided, the wallet will attempt to sign all transactions
+</ParamField>
+
+Signs one or more transactions. Returns an array of signed transactions, with `null` for transactions that were not signed.
+
+```typescript
+const signedTxns = await wallet.signTransactions([txn1, txn2], [0])
+// signedTxns[0] contains the signed first transaction
+// signedTxns[1] is null (not signed)
+```
+
+### transactionSigner
+
+```typescript
+transactionSigner(
+  txnGroup: algosdk.Transaction[],
+  indexesToSign: number[]
+): Promise<Uint8Array[]>
+```
+
+<ParamField path="txnGroup" type="algosdk.Transaction[]" required>
+  Array of transactions to sign
+</ParamField>
+
+<ParamField path="indexesToSign" type="number[]" required>
+  Array of indices indicating which transactions to sign
+</ParamField>
+
+Algorand SDK compatible transaction signer. Returns only the signed transactions (filters out nulls).
+
+```typescript
+const atc = new algosdk.AtomicTransactionComposer()
+atc.addTransaction({ 
+  txn: transaction, 
+  signer: wallet.transactionSigner 
+})
+const result = await atc.execute(algodClient, 4)
+```
+
+### signData
+
+```typescript
+signData(data: string, metadata: SignMetadata): Promise<SignDataResponse>
+```
+
+<ParamField path="data" type="string" required>
+  The data to sign (base64 encoded)
+</ParamField>
+
+<ParamField path="metadata" type="SignMetadata" required>
+  Metadata about the signing request
+  
+  <Expandable title="properties">
+    <ParamField path="scope" type="ScopeType" required>
+      The scope of the signature (e.g., ScopeType.AUTH)
+    </ParamField>
+    
+    <ParamField path="encoding" type="string" required>
+      The encoding format (e.g., 'base64')
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+Signs arbitrary data. Only available if `canSignData` is `true`. Throws an error by default.
+
+```typescript
+if (wallet.canSignData) {
+  const signature = await wallet.signData(data, { 
+    scope: ScopeType.AUTH, 
+    encoding: 'base64' 
+  })
+}
+```
+
+### withPrivateKey
+
+```typescript
+withPrivateKey<T>(callback: (secretKey: Uint8Array) => Promise<T>): Promise<T>
+```
+
+<ParamField path="callback" type="(secretKey: Uint8Array) => Promise<T>" required>
+  Callback function that receives the private key
+</ParamField>
+
+Provides temporary access to the wallet's private key within a callback. Only available if `canUsePrivateKey` is `true`. The private key is automatically zeroed from memory after the callback completes. Throws an error by default.
+
+```typescript
+if (wallet.canUsePrivateKey) {
+  const result = await wallet.withPrivateKey(async (secretKey) => {
+    // Use the secret key
+    const signed = algosdk.signTransaction(txn, secretKey)
+    return signed
+  })
+  // secretKey is automatically zeroed here
+}
+```
+
+### subscribe
+
+```typescript
+subscribe(callback: (state: State) => void): () => void
+```
+
+<ParamField path="callback" type="(state: State) => void" required>
+  Function to call when state changes
+</ParamField>
+
+Subscribes to state changes. Returns an unsubscribe function.
+
+```typescript
+const unsubscribe = wallet.subscribe((state) => {
+  console.log('Wallet state changed:', state.wallets[wallet.walletKey])
+})
+
+// Later, to unsubscribe
+unsubscribe()
+```
+
+## Wallet Implementations
+
+The following wallet providers extend BaseWallet:
+
+- **PeraWallet** (`WalletId.PERA`) - Pera Wallet mobile and web
+- **DeflyWallet** (`WalletId.DEFLY`) - Defly Wallet mobile
+- **DeflyWebWallet** (`WalletId.DEFLY_WEB`) - Defly Wallet web extension
+- **ExodusWallet** (`WalletId.EXODUS`) - Exodus wallet
+- **KibisisWallet** (`WalletId.KIBISIS`) - Kibisis wallet
+- **LuteWallet** (`WalletId.LUTE`) - Lute wallet
+- **BiatecWallet** (`WalletId.BIATEC`) - Biatec wallet
+- **W3Wallet** (`WalletId.W3_WALLET`) - W3 wallet
+- **WalletConnect** (`WalletId.WALLETCONNECT`) - Generic WalletConnect integration
+- **KmdWallet** (`WalletId.KMD`) - Algorand Key Management Daemon
+- **MnemonicWallet** (`WalletId.MNEMONIC`) - Mnemonic-based wallet
+- **Web3AuthWallet** (`WalletId.WEB3AUTH`) - Web3Auth integration
+- **MagicAuth** (`WalletId.MAGIC`) - Magic authentication
+- **CustomWallet** (`WalletId.CUSTOM`) - Custom wallet implementation
+
+Each implementation may accept specific options through the `WalletManager` configuration.

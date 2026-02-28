@@ -1,0 +1,556 @@
+---
+title: Supported wallets
+description: Complete reference of all wallet providers supported by use-wallet.
+---
+
+## Overview
+
+use-wallet supports a wide range of Algorand wallet providers. Each wallet can be configured with specific options and custom metadata.
+
+## Wallet IDs
+
+All supported wallets are identified by the `WalletId` enum:
+
+```typescript
+enum WalletId {
+  BIATEC = 'biatec',
+  DEFLY = 'defly',
+  DEFLY_WEB = 'defly-web',
+  CUSTOM = 'custom',
+  EXODUS = 'exodus',
+  KIBISIS = 'kibisis',
+  KMD = 'kmd',
+  LUTE = 'lute',
+  MAGIC = 'magic',
+  MNEMONIC = 'mnemonic',
+  PERA = 'pera',
+  WALLETCONNECT = 'walletconnect',
+  WEB3AUTH = 'web3auth',
+  W3_WALLET = 'w3-wallet'
+}
+```
+
+## Configuration
+
+Wallets can be configured in two ways:
+
+<Tabs>
+  <Tab title="Simple">
+    Pass just the wallet ID:
+
+    ```typescript
+    import { WalletManager, WalletId } from '@txnlab/use-wallet'
+
+    const manager = new WalletManager({
+      wallets: [
+        WalletId.PERA,
+        WalletId.DEFLY,
+        WalletId.EXODUS
+      ]
+    })
+    ```
+  </Tab>
+
+  <Tab title="With options">
+    Pass a configuration object with options and custom metadata:
+
+    ```typescript
+    const manager = new WalletManager({
+      wallets: [
+        {
+          id: WalletId.WALLETCONNECT,
+          options: {
+            projectId: 'your-project-id',
+            themeMode: 'dark'
+          },
+          metadata: {
+            name: 'WalletConnect v2',
+            icon: 'data:image/svg+xml;base64,...'
+          }
+        }
+      ]
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Mobile wallets (WalletConnect)
+
+### Pera
+
+<ParamField path="WalletId.PERA" type="pera">
+  Official Pera mobile wallet with WalletConnect support.
+
+  **Options:**
+  ```typescript
+  interface PeraWalletConnectOptions {
+    bridge?: string
+    shouldShowSignTxnToast?: boolean
+    chainId?: 416001 | 416002 | 416003 | 4160
+    compactMode?: boolean
+  }
+  ```
+
+  **Peer dependency:**
+  ```bash
+  npm install @perawallet/connect
+  ```
+
+  **Example:**
+  ```typescript
+  {
+    id: WalletId.PERA,
+    options: {
+      shouldShowSignTxnToast: true,
+      compactMode: false
+    }
+  }
+  ```
+</ParamField>
+
+### Defly
+
+<ParamField path="WalletId.DEFLY" type="defly">
+  Official Defly mobile wallet with WalletConnect support.
+
+  **Options:**
+  ```typescript
+  interface DeflyWalletConnectOptions {
+    bridge?: string
+    shouldShowSignTxnToast?: boolean
+    chainId?: 416001 | 416002 | 416003 | 4160
+  }
+  ```
+
+  **Peer dependency:**
+  ```bash
+  npm install @blockshake/defly-connect
+  ```
+
+  **Example:**
+  ```typescript
+  WalletId.DEFLY
+  ```
+</ParamField>
+
+### Lute
+
+<ParamField path="WalletId.LUTE" type="lute">
+  Lute mobile wallet with WalletConnect support.
+
+  **Options:**
+  ```typescript
+  interface LuteConnectOptions {
+    siteName?: string
+  }
+  ```
+
+  **Peer dependency:**
+  ```bash
+  npm install lute-connect
+  ```
+
+  **Example:**
+  ```typescript
+  {
+    id: WalletId.LUTE,
+    options: { siteName: 'My dApp' }
+  }
+  ```
+</ParamField>
+
+### WalletConnect (generic)
+
+<ParamField path="WalletId.WALLETCONNECT" type="walletconnect">
+  Generic WalletConnect v2 integration. Works with any WalletConnect-compatible Algorand wallet.
+
+  **Options:**
+  ```typescript
+  interface WalletConnectOptions {
+    projectId: string  // Required from WalletConnect Cloud
+    relayUrl?: string
+    metadata?: {
+      name?: string
+      description?: string
+      url?: string
+      icons?: string[]
+    }
+    // Optional skin for branding
+    skin?: string | WalletConnectSkin
+    // Modal customization
+    enableExplorer?: boolean
+    explorerRecommendedWalletIds?: string[]
+    privacyPolicyUrl?: string
+    termsOfServiceUrl?: string
+    themeMode?: 'dark' | 'light'
+    themeVariables?: Record<string, string>
+  }
+  ```
+
+  **Peer dependencies:**
+  ```bash
+  npm install @walletconnect/modal @walletconnect/sign-client
+  ```
+
+  **Example:**
+  ```typescript
+  {
+    id: WalletId.WALLETCONNECT,
+    options: {
+      projectId: 'abc123',
+      themeMode: 'dark'
+    }
+  }
+  ```
+
+  <Note>
+    Get your free `projectId` at [WalletConnect Cloud](https://cloud.walletconnect.com)
+  </Note>
+</ParamField>
+
+### WalletConnect skins
+
+The generic WalletConnect provider supports "skins" to brand the integration for specific wallets:
+
+```typescript
+// Built-in skins
+{
+  id: WalletId.WALLETCONNECT,
+  options: {
+    projectId: 'abc123',
+    skin: 'biatec'  // or 'voiwallet'
+  }
+}
+
+// Custom skin
+import { registerSkin } from '@txnlab/use-wallet'
+
+registerSkin({
+  id: 'mywallet',
+  name: 'My Custom Wallet',
+  icon: 'data:image/svg+xml;base64,...'
+})
+
+// Then use it
+{
+  id: WalletId.WALLETCONNECT,
+  options: {
+    projectId: 'abc123',
+    skin: 'mywallet'
+  }
+}
+```
+
+**Built-in skins:**
+- `biatec` - Biatec Wallet
+- `voiwallet` - Voi Wallet
+
+### Biatec
+
+<ParamField path="WalletId.BIATEC" type="biatec">
+  Convenience wrapper for WalletConnect with Biatec branding. Equivalent to using `WalletId.WALLETCONNECT` with `skin: 'biatec'`.
+
+  **Options:** Same as `WalletConnectOptions` (projectId required)
+
+  **Peer dependencies:**
+  ```bash
+  npm install @walletconnect/modal @walletconnect/sign-client
+  ```
+</ParamField>
+
+### W3 Wallet
+
+<ParamField path="WalletId.W3_WALLET" type="w3-wallet">
+  W3 Wallet integration.
+
+  **Options:** None
+
+  **Peer dependency:**
+  ```bash
+  npm install @w3block/w3-wallet-js-sdk
+  ```
+</ParamField>
+
+## Browser extension wallets
+
+### Exodus
+
+<ParamField path="WalletId.EXODUS" type="exodus">
+  Exodus browser extension wallet.
+
+  **Options:**
+  ```typescript
+  interface ExodusOptions {
+    // No options currently
+  }
+  ```
+
+  **Peer dependency:**
+  ```bash
+  npm install @exodus/algorand-connector
+  ```
+
+  **Example:**
+  ```typescript
+  WalletId.EXODUS
+  ```
+</ParamField>
+
+### Kibisis
+
+<ParamField path="WalletId.KIBISIS" type="kibisis">
+  Kibisis browser extension wallet.
+
+  **Options:** None
+
+  **Peer dependency:**
+  ```bash
+  npm install @agoralabs-sh/avm-web-provider
+  ```
+
+  **Example:**
+  ```typescript
+  WalletId.KIBISIS
+  ```
+</ParamField>
+
+## Web wallets
+
+### Defly Web
+
+<ParamField path="WalletId.DEFLY_WEB" type="defly-web">
+  Defly web wallet integration (iframe-based).
+
+  **Options:** None
+
+  **Peer dependency:**
+  ```bash
+  npm install @blockshake/defly-wallet
+  ```
+
+  **Example:**
+  ```typescript
+  WalletId.DEFLY_WEB
+  ```
+</ParamField>
+
+## Authentication wallets
+
+### Magic
+
+<ParamField path="WalletId.MAGIC" type="magic">
+  Magic Link authentication (email-based wallet).
+
+  **Options:**
+  ```typescript
+  interface MagicAuthOptions {
+    apiKey: string  // Required
+  }
+  ```
+
+  **Peer dependencies:**
+  ```bash
+  npm install magic-sdk @magic-ext/algorand
+  ```
+
+  **Example:**
+  ```typescript
+  {
+    id: WalletId.MAGIC,
+    options: { apiKey: 'pk_live_...' }
+  }
+  ```
+
+  **Special connect requirements:**
+  ```typescript
+  // Magic requires passing an email to connect()
+  await magicWallet.connect({ email: 'user@example.com' })
+  ```
+</ParamField>
+
+### Web3Auth
+
+<ParamField path="WalletId.WEB3AUTH" type="web3auth">
+  Web3Auth social login integration.
+
+  **Options:**
+  ```typescript
+  interface Web3AuthOptions {
+    clientId: string  // Required
+    // Additional Web3Auth configuration
+  }
+  ```
+
+  **Peer dependency:**
+  ```bash
+  npm install @web3auth/modal @web3auth/base
+  ```
+
+  **Example:**
+  ```typescript
+  {
+    id: WalletId.WEB3AUTH,
+    options: { clientId: 'your-client-id' }
+  }
+  ```
+</ParamField>
+
+## Development wallets
+
+### KMD
+
+<ParamField path="WalletId.KMD" type="kmd">
+  Algorand Key Management Daemon for local development.
+
+  **Options:**
+  ```typescript
+  interface KmdOptions {
+    token?: string | algosdk.KMDTokenHeader | algosdk.CustomTokenHeader
+    baseServer?: string
+    port?: string | number
+    headers?: Record<string, string>
+    wallet?: string
+    promptForPassword?: () => Promise<string>
+  }
+  ```
+
+  **Example:**
+  ```typescript
+  {
+    id: WalletId.KMD,
+    options: {
+      wallet: 'unencrypted-default-wallet',
+      baseServer: 'http://localhost',
+      port: 4002,
+      token: 'a'.repeat(64)
+    }
+  }
+  ```
+</ParamField>
+
+### Mnemonic
+
+<ParamField path="WalletId.MNEMONIC" type="mnemonic">
+  Development-only wallet using a 25-word mnemonic.
+
+  **Options:**
+  ```typescript
+  interface MnemonicOptions {
+    // No options - mnemonic is provided at connect time
+  }
+  ```
+
+  **Example:**
+  ```typescript
+  WalletId.MNEMONIC
+  ```
+
+  **Special connect requirements:**
+  ```typescript
+  await mnemonicWallet.connect({ 
+    mnemonic: 'word1 word2 word3 ...' 
+  })
+  ```
+
+  <Warning>
+    Never use in production! For development and testing only.
+  </Warning>
+</ParamField>
+
+## Custom wallets
+
+### Custom
+
+<ParamField path="WalletId.CUSTOM" type="custom">
+  Create your own wallet integration by extending the `BaseWallet` class.
+
+  **Options:**
+  ```typescript
+  interface CustomWalletOptions {
+    wallet: typeof BaseWallet
+  }
+  ```
+
+  **Example:**
+  ```typescript
+  import { BaseWallet } from '@txnlab/use-wallet'
+
+  class MyCustomWallet extends BaseWallet {
+    // Implement required methods
+    async connect() { /* ... */ }
+    async disconnect() { /* ... */ }
+    async resumeSession() { /* ... */ }
+    async signTransactions() { /* ... */ }
+  }
+
+  // Use it
+  {
+    id: WalletId.CUSTOM,
+    options: { wallet: MyCustomWallet },
+    metadata: {
+      name: 'My Custom Wallet',
+      icon: 'data:image/svg+xml;base64,...'
+    }
+  }
+  ```
+</ParamField>
+
+## Wallet metadata
+
+All wallets support custom metadata overrides:
+
+```typescript
+{
+  id: WalletId.PERA,
+  metadata: {
+    name: 'Pera Wallet (Custom Name)',
+    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PC9zdmc+'
+  }
+}
+```
+
+<ParamField path="metadata.name" type="string">
+  Display name for the wallet. Defaults to the wallet's built-in name.
+</ParamField>
+
+<ParamField path="metadata.icon" type="string">
+  Icon as a data URI or URL. Defaults to the wallet's built-in icon.
+</ParamField>
+
+## Peer dependencies
+
+use-wallet uses peer dependencies to keep bundle sizes small. Only install the SDKs for wallets you intend to support:
+
+<CodeGroup>
+```bash Mobile wallets
+npm install @perawallet/connect @blockshake/defly-connect lute-connect
+```
+
+```bash WalletConnect
+npm install @walletconnect/modal @walletconnect/sign-client
+```
+
+```bash Browser extensions
+npm install @exodus/algorand-connector @agoralabs-sh/avm-web-provider
+```
+
+```bash Web wallets
+npm install @blockshake/defly-wallet @w3block/w3-wallet-js-sdk
+```
+
+```bash Auth wallets
+npm install magic-sdk @magic-ext/algorand
+npm install @web3auth/modal @web3auth/base
+```
+</CodeGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Wallet manager" icon="gear" href="/core/wallet-manager">
+    Learn about the WalletManager class
+  </Card>
+  <Card title="Network configuration" icon="network-wired" href="/core/network-configuration">
+    Configure networks and algod clients
+  </Card>
+</CardGroup>

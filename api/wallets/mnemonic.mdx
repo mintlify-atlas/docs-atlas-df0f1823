@@ -1,0 +1,233 @@
+---
+title: Mnemonic wallet
+description: API reference for the Mnemonic wallet provider in use-wallet
+---
+
+The Mnemonic wallet provider enables direct integration with 25-word Algorand mnemonic passphrases for local development and testing.
+
+<Warning>
+  **Security Warning:** The Mnemonic wallet is insecure and intended for development and testing only. 
+  - Never use on MainNet
+  - Never use with accounts holding real funds
+  - Private keys may be exposed in browser memory
+  - Not suitable for production environments
+</Warning>
+
+## Installation
+
+No additional peer dependencies required. The Algorand SDK includes mnemonic utilities.
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.MNEMONIC,
+      options: {
+        promptForMnemonic: async () => {
+          return prompt('Enter 25-word mnemonic:') || null
+        }
+      }
+    }
+  ],
+  network: 'testnet'  // Only testnet/localnet allowed
+})
+```
+
+## Configuration
+
+<ParamField path="persistToStorage" type="boolean" optional default="false">
+  Whether to persist the mnemonic to localStorage. 
+  
+  <Warning>
+    Extremely insecure. Only use for development convenience. When enabled, the mnemonic is stored in plaintext in localStorage.
+  </Warning>
+</ParamField>
+
+<ParamField path="promptForMnemonic" type="() => Promise<string | null>" optional>
+  Async function that prompts the user for their mnemonic passphrase.
+  
+  **Default:** Browser `prompt()` dialog
+  
+  **Example:**
+  ```typescript
+  promptForMnemonic: async () => {
+    // Use a custom modal/input instead of browser prompt
+    return await showMnemonicModal()
+  }
+  ```
+</ParamField>
+
+## Type definition
+
+```typescript
+export type MnemonicOptions = {
+  persistToStorage?: boolean
+  promptForMnemonic?: () => Promise<string | null>
+}
+```
+
+## Features
+
+### MainNet blocking
+
+The Mnemonic wallet actively blocks MainNet connections. Attempting to use it on MainNet will throw an error:
+
+```typescript
+// This will throw: "Production network detected. Aborting."
+const walletManager = new WalletManager({
+  wallets: [WalletId.MNEMONIC],
+  network: 'mainnet'  // ❌ Not allowed
+})
+```
+
+### Private key access
+
+The Mnemonic wallet supports the `withPrivateKey` method for advanced use cases:
+
+```typescript
+const result = await wallet.withPrivateKey(async (secretKey) => {
+  // secretKey is a 64-byte Uint8Array
+  // Use for custom signing operations
+  return customOperation(secretKey)
+})
+// secretKey is automatically zeroed after callback completes
+```
+
+<Warning>
+  `withPrivateKey` is blocked on MainNet. It will throw an error if the active network is not a test network.
+</Warning>
+
+### Automatic key zeroing
+
+Private keys are zeroed from memory after use to minimize exposure:
+
+```typescript
+// After signing, the private key is zeroed
+await wallet.signTransactions(txns)
+// Key no longer in memory
+
+// After withPrivateKey callback
+await wallet.withPrivateKey(async (sk) => {
+  // Use key
+  return result
+})
+// Key copy is zeroed
+```
+
+## Methods
+
+### connect()
+
+Prompts for the mnemonic and derives the Algorand account.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+**Throws:** 
+- `Error: 'Production network detected. Aborting.'` if on MainNet
+- `Error: 'No mnemonic provided'` if user cancels prompt
+
+### disconnect()
+
+Disconnects and removes the mnemonic from storage (if persisted).
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using the derived private key. No user prompts - signs silently.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+**Throws:** `Error: 'Production network detected. Aborting.'` if on MainNet
+
+### withPrivateKey()
+
+Provides scoped access to the private key via a callback. The key is automatically zeroed after the callback completes.
+
+**Parameters:**
+- `callback`: Async function that receives the 64-byte Algorand secret key
+
+**Returns:** `Promise<T>` - Returns the result of the callback
+
+**Throws:** `Error: 'Production network detected. Aborting.'` if on MainNet
+
+## Session management
+
+Session behavior depends on the `persistToStorage` option:
+
+**When `persistToStorage: false` (default):**
+- Mnemonic is not stored
+- User must re-enter mnemonic on page reload
+- More secure (mnemonic exists only in memory during session)
+
+**When `persistToStorage: true`:**
+- Mnemonic is stored in localStorage
+- Sessions persist across page reloads
+- Extremely insecure (mnemonic stored in plaintext)
+
+## Storage key
+
+When persisting to storage, the mnemonic is stored at:
+
+```typescript
+const STORAGE_KEY = '@txnlab/use-wallet_mnemonic'
+```
+
+## Platform support
+
+- **Web:** Full support (development only)
+- **Mobile:** Full support (development only)
+- **Desktop:** Full support (development only)
+
+## Use cases
+
+<Check>
+  **Appropriate use cases:**
+  - Local development with AlgoKit LocalNet
+  - Automated testing scripts
+  - TestNet development and testing
+  - Quick prototyping
+</Check>
+
+<Warning>
+  **Inappropriate use cases:**
+  - Production applications
+  - MainNet transactions
+  - User-facing applications
+  - Any scenario with real funds
+</Warning>
+
+## Security considerations
+
+<Warning>
+  **Critical security issues:**
+  - Private key stored in browser memory
+  - Mnemonic may be logged or exposed
+  - No user confirmation for transactions
+  - If `persistToStorage: true`, mnemonic stored in plaintext
+  - Vulnerable to XSS attacks
+  - No hardware wallet support
+</Warning>
+
+## Comparison with KMD
+
+Both Mnemonic and KMD are for development only:
+
+| Feature | Mnemonic | KMD |
+|---------|----------|-----|
+| **Setup** | Just enter mnemonic | Requires KMD service |
+| **Storage** | Optional localStorage | KMD database |
+| **Use case** | Quick testing | Local node development |
+| **Security** | Very low | Low |
+
+## Source code
+
+View the Mnemonic wallet implementation: [mnemonic.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/mnemonic.ts)

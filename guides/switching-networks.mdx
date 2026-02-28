@@ -1,0 +1,221 @@
+---
+title: Switching networks
+description: Switch between Algorand networks at runtime
+---
+
+use-wallet provides two ways to switch between Algorand networks:
+
+- Setting the default network at startup
+- Switching networks at runtime using the `useNetwork` hook/composable/primitive
+
+## Default network
+
+When initializing the WalletManager, you can specify which network to use as the default:
+
+```typescript
+import { WalletManager, NetworkId } from '@txnlab/use-wallet'
+
+const manager = new WalletManager({
+  defaultNetwork: NetworkId.TESTNET
+})
+```
+
+You can also control whether the manager should reset to the default network on page load using the `resetNetwork` option:
+
+```typescript
+const manager = new WalletManager({
+  defaultNetwork: NetworkId.TESTNET,
+  options: {
+    // Always start on TestNet, even if the user was previously on a different network
+    resetNetwork: true
+  }
+})
+```
+
+When `resetNetwork` is `false` (the default), use-wallet will attempt to restore the last active network from local storage.
+
+## Runtime network switching
+
+The `useNetwork` hook/composable provides methods for switching networks at runtime.
+
+<CodeGroup>
+```tsx React
+import { useNetwork } from '@txnlab/use-wallet-react'
+
+function NetworkSwitch() {
+  const {
+    activeNetwork,
+    setActiveNetwork,
+    networkConfig
+  } = useNetwork()
+
+  return (
+    <select
+      value={activeNetwork}
+      onChange={(e) => setActiveNetwork(e.target.value)}
+    >
+      {Object.entries(networkConfig).map(([id, network]) => (
+        <option key={id} value={id}>
+          {id}
+        </option>
+      ))}
+    </select>
+  )
+}
+```
+
+```vue Vue
+<script setup lang="ts">
+  import { useNetwork } from '@txnlab/use-wallet-vue'
+
+  const {
+    activeNetwork,
+    setActiveNetwork,
+    networkConfig
+  } = useNetwork()
+</script>
+
+<template>
+  <select
+    :value="activeNetwork"
+    @change="(e) => setActiveNetwork((e.target as HTMLSelectElement).value)"
+  >
+    <option
+      v-for="[id, network] in Object.entries(networkConfig)"
+      :key="id"
+      :value="id"
+    >
+      {{ id }}
+    </option>
+  </select>
+</template>
+```
+
+```tsx Solid
+import { useNetwork } from '@txnlab/use-wallet-solid'
+
+function NetworkSwitch() {
+  const {
+    activeNetwork,
+    setActiveNetwork,
+    networkConfig
+  } = useNetwork()
+
+  return (
+    <select
+      value={activeNetwork()}
+      onChange={(e) => setActiveNetwork(e.currentTarget.value)}
+    >
+      {Object.entries(networkConfig()).map(([id, network]) => (
+        <option value={id}>
+          {id}
+        </option>
+      ))}
+    </select>
+  )
+}
+```
+
+```svelte Svelte
+<script lang="ts">
+  import { useNetwork } from '@txnlab/use-wallet-svelte'
+
+  const {
+    activeNetwork,
+    setActiveNetwork,
+    networkConfig
+  } = useNetwork()
+</script>
+
+<select
+  value={activeNetwork.current}
+  onchange={(e) => setActiveNetwork((e.target as HTMLSelectElement).value)}
+>
+  {#each Object.entries(networkConfig) as [id, network]}
+    <option>
+      {id}
+    </option>
+  {/each}
+</select>
+```
+</CodeGroup>
+
+## Network status
+
+You can use the `activeNetworkConfig` to access information about the current network:
+
+<CodeGroup>
+```typescript React
+const { activeNetworkConfig } = useNetwork()
+
+// Check if we're on a test network
+const isTestnet = activeNetworkConfig.isTestnet
+
+// Get genesis ID
+const genesisId = activeNetworkConfig.genesisId
+```
+
+```vue Vue
+<script setup lang="ts">
+  const { activeNetworkConfig } = useNetwork()
+
+  // Check if we're on a test network
+  const isTestnet = computed(() => activeNetworkConfig.value.isTestnet)
+
+  // Get genesis ID
+  const genesisId = computed(() => activeNetworkConfig.value.genesisId)
+</script>
+```
+
+```typescript Solid
+const { activeNetworkConfig } = useNetwork()
+
+// Check if we're on a test network
+const isTestnet = () => activeNetworkConfig().isTestnet
+
+// Get genesis ID
+const genesisId = () => activeNetworkConfig().genesisId
+```
+
+```svelte Svelte
+<script lang="ts">
+  const { activeNetworkConfig } = useNetwork()
+
+  // Check if we're on a test network
+  const isTestnet = $derived(activeNetworkConfig.current.isTestnet)
+
+  // Get genesis ID
+  const genesisId = $derived(activeNetworkConfig.current.genesisId)
+</script>
+```
+</CodeGroup>
+
+## Network events
+
+When switching networks, several things happen automatically:
+
+1. The `algodClient` is updated to point to the new network
+2. Active wallet sessions are maintained (if the wallet supports the new network)
+3. The active network is saved to local storage
+
+## Wallet compatibility
+
+Not all wallets support all networks. For example:
+
+- Exodus only works on MainNet
+- Defly and Pera only support MainNet and TestNet
+- The Mnemonic wallet only works on test networks
+- Custom networks may not be supported by all wallets
+
+Please refer to each wallet's documentation to determine which networks they support.
+
+## Default networks
+
+use-wallet supports any AVM-compatible network and comes with default configurations for these Algorand networks:
+
+- MainNet
+- TestNet
+- BetaNet
+- LocalNet (for development)
+
+For details about configuring networks, including how to customize default networks and add custom networks, see the [Configuration](/getting-started/configuration#network-configuration) guide.

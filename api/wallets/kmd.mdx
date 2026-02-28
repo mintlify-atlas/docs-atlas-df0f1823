@@ -1,0 +1,165 @@
+---
+title: KMD wallet
+description: API reference for the KMD wallet provider in use-wallet
+---
+
+The KMD (Key Management Daemon) wallet provider enables integration with the Algorand KMD service for local development and testing.
+
+<Warning>
+  KMD is intended for local development only. Never use KMD in production environments or with accounts holding real funds.
+</Warning>
+
+## Installation
+
+No additional peer dependencies required. KMD is included with the Algorand SDK.
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.KMD,
+      options: {
+        wallet: 'unencrypted-default-wallet',
+        promptForPassword: async () => ''
+      }
+    }
+  ]
+})
+```
+
+## Configuration
+
+<ParamField path="token" type="string | algosdk.KMDTokenHeader | algosdk.CustomTokenHeader" optional default="64 'a' characters">
+  KMD API token. Defaults to a standard 64-character token for local development.
+</ParamField>
+
+<ParamField path="baseServer" type="string" optional default="http://127.0.0.1">
+  KMD server base URL.
+</ParamField>
+
+<ParamField path="port" type="string | number" optional default="4002">
+  KMD server port.
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>" optional>
+  Additional HTTP headers to include in requests.
+</ParamField>
+
+<ParamField path="wallet" type="string" optional default="unencrypted-default-wallet">
+  Name of the KMD wallet to use.
+</ParamField>
+
+<ParamField path="promptForPassword" type="() => Promise<string>" optional>
+  Async function that returns the wallet password. Defaults to a browser prompt.
+  
+  **Example:**
+  ```typescript
+  promptForPassword: async () => {
+    return prompt('Enter KMD password') || ''
+  }
+  ```
+</ParamField>
+
+## Type definition
+
+```typescript
+export type KmdOptions = Partial<Pick<KmdConstructor, 'token' | 'promptForPassword'>> &
+  Omit<KmdConstructor, 'token' | 'promptForPassword'> & {
+    wallet?: string
+  }
+
+interface KmdConstructor {
+  token: string | algosdk.KMDTokenHeader | algosdk.CustomTokenHeader
+  baseServer?: string
+  port?: string | number
+  headers?: Record<string, string>
+  promptForPassword: () => Promise<string>
+}
+```
+
+## Features
+
+### Local development
+
+KMD is perfect for local development with AlgoKit LocalNet or other local Algorand nodes. It provides quick access to test accounts without manual key management.
+
+### Password protection
+
+KMD wallets can be password-protected. The `promptForPassword` function is called whenever password authentication is needed.
+
+### Direct signing
+
+Transactions are signed directly using the private keys stored in KMD, without user interaction prompts.
+
+## Methods
+
+### connect()
+
+Connects to the KMD wallet and fetches available accounts. Prompts for the wallet password if required.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects from KMD and clears the session.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using KMD. Signs silently without user prompts.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+## Session management
+
+KMD sessions are managed via wallet handle tokens. Tokens are acquired during connection and signing operations, then immediately released after use.
+
+## Wallet discovery
+
+KMD can manage multiple wallets. The provider will:
+1. List all available KMD wallets
+2. Find the wallet matching the configured name
+3. Initialize a handle token with the password
+4. Fetch accounts from the wallet
+
+## Default configuration
+
+The default configuration works with AlgoKit LocalNet:
+
+```typescript
+{
+  token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  baseServer: 'http://127.0.0.1',
+  port: 4002,
+  wallet: 'unencrypted-default-wallet',
+  promptForPassword: () => Promise.resolve('')
+}
+```
+
+## Platform support
+
+- **Web:** Full support (local development)
+- **Mobile:** Not applicable
+- **Desktop:** Full support (local development)
+
+## Security considerations
+
+<Warning>
+  - Never use KMD in production
+  - Never use KMD with accounts holding real funds
+  - KMD should only be used with local development networks
+  - Private keys are stored unencrypted by default
+</Warning>
+
+## Source code
+
+View the KMD wallet implementation: [kmd.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/kmd.ts)

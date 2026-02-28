@@ -1,0 +1,143 @@
+---
+title: Lute wallet
+description: API reference for the Lute wallet provider in use-wallet
+---
+
+The Lute wallet provider enables integration with [Lute Wallet](https://lute.app/), a web-based Algorand wallet.
+
+## Installation
+
+Install the required peer dependency:
+
+```bash
+npm install lute-connect
+```
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.LUTE,
+    {
+      id: WalletId.LUTE,
+      options: { siteName: 'My dApp' }
+    }
+  ]
+})
+```
+
+## Configuration
+
+The Lute wallet accepts the following configuration options:
+
+<ParamField path="siteName" type="string" optional>
+  Name of your dApp to display in Lute Wallet connection prompts.
+</ParamField>
+
+## Type definition
+
+```typescript
+export interface LuteConnectOptions {
+  siteName?: string
+}
+```
+
+## Features
+
+### Web-based wallet
+
+Lute is a web-based wallet that doesn't require browser extensions or mobile apps. Users access their accounts directly through the web interface.
+
+### Data signing support
+
+Lute Wallet supports the `signData` method for signing arbitrary data, enabling authentication flows like Sign-In with Algorand (SIWA).
+
+### Error handling
+
+Lute provides detailed error codes for transaction signing failures:
+
+```typescript
+import { SignTxnsError } from '@txnlab/use-wallet'
+
+try {
+  await wallet.signTransactions(txns)
+} catch (error) {
+  if (error instanceof SignTxnsError) {
+    console.log('Error code:', error.code)
+    console.log('Error message:', error.message)
+  }
+}
+```
+
+## Methods
+
+### connect()
+
+Initiates connection to Lute Wallet. Opens the Lute interface for account selection.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects from Lute Wallet and clears the local session.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using Lute Wallet. The user must approve the transaction in the Lute interface.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+**Throws:** `SignTxnsError` with error code and message
+
+### signData()
+
+Signs arbitrary data using Lute Wallet. Useful for authentication flows.
+
+**Parameters:**
+- `data`: Base64-encoded data to sign
+- `metadata`: Signing metadata including scope and encoding
+
+**Returns:** `Promise<SignDataResponse>`
+
+**Throws:** `SignDataError` with error code and message
+
+**Example:**
+
+```typescript
+import { ScopeType } from '@txnlab/use-wallet'
+
+const signature = await wallet.signData(
+  btoa('Hello, Algorand!'),
+  {
+    scope: ScopeType.AUTH,
+    encoding: 'utf-8'
+  }
+)
+```
+
+## Session management
+
+Lute Wallet sessions are managed locally. Sessions persist across page reloads as long as the wallet state is stored.
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Full support (mobile web)
+- **Desktop:** Full support
+
+## Network compatibility
+
+Lute Wallet automatically detects the network based on the genesis ID and hash from your configured Algod client.
+
+## Source code
+
+View the Lute wallet implementation: [lute.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/lute.ts)

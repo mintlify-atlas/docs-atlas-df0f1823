@@ -1,0 +1,452 @@
+---
+title: Types
+description: Core TypeScript types and interfaces used throughout use-wallet.
+---
+
+This page documents the core types and interfaces used in use-wallet.
+
+## Wallet Types
+
+### WalletId
+
+```typescript
+enum WalletId {
+  BIATEC = 'biatec',
+  DEFLY = 'defly',
+  DEFLY_WEB = 'defly-web',
+  CUSTOM = 'custom',
+  EXODUS = 'exodus',
+  KIBISIS = 'kibisis',
+  KMD = 'kmd',
+  LUTE = 'lute',
+  MAGIC = 'magic',
+  MNEMONIC = 'mnemonic',
+  PERA = 'pera',
+  WALLETCONNECT = 'walletconnect',
+  WEB3AUTH = 'web3auth',
+  W3_WALLET = 'w3-wallet'
+}
+```
+
+Enum of supported wallet providers.
+
+### WalletKey
+
+```typescript
+type WalletKey = WalletId | `${WalletId.WALLETCONNECT}:${string}`
+```
+
+Composite key type that can be either a standard `WalletId` or a composite string for skinned WalletConnect instances (e.g., `'walletconnect:biatec'`).
+
+### WalletAccount
+
+```typescript
+interface WalletAccount {
+  name: string
+  address: string
+}
+```
+
+Represents a wallet account with a name and Algorand address.
+
+<ResponseField name="name" type="string">
+  Display name for the account
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  The Algorand address of the account
+</ResponseField>
+
+### WalletMetadata
+
+```typescript
+interface WalletMetadata {
+  name: string
+  icon: string
+}
+```
+
+Metadata for displaying wallet information in the UI.
+
+<ResponseField name="name" type="string">
+  Display name for the wallet
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Wallet icon as a data URI or URL
+</ResponseField>
+
+### SupportedWallet
+
+```typescript
+type SupportedWallet = WalletIdConfig<WalletId> | WalletId
+```
+
+A wallet configuration can be either:
+- A simple `WalletId` string (e.g., `WalletId.PERA`)
+- A configuration object with id, options, and metadata
+
+#### Example
+
+```typescript
+// Simple wallet ID
+const wallet1: SupportedWallet = WalletId.PERA
+
+// Full configuration
+const wallet2: SupportedWallet = {
+  id: WalletId.WALLETCONNECT,
+  options: { projectId: 'your-project-id' },
+  metadata: { name: 'Custom Name', icon: 'data:image/svg...' }
+}
+```
+
+### WalletIdConfig
+
+```typescript
+type WalletIdConfig<T extends keyof WalletConfigMap> = {
+  [K in T]: {
+    id: K
+  } & WalletConfigMap[K]
+}[T]
+```
+
+Configuration object for a wallet, including its ID, options, and metadata.
+
+<ResponseField name="id" type="WalletId" required>
+  The wallet identifier
+</ResponseField>
+
+<ResponseField name="options" type="WalletOptions<T>">
+  Wallet-specific options (e.g., WalletConnect projectId)
+</ResponseField>
+
+<ResponseField name="metadata" type="Partial<WalletMetadata>">
+  Custom metadata to override the wallet's default name and icon
+</ResponseField>
+
+### WalletConnectSkin
+
+```typescript
+interface WalletConnectSkin {
+  id: string
+  name: string
+  icon: string
+}
+```
+
+Metadata for a WalletConnect skin, used to customize the appearance of WalletConnect-based wallets.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the skin
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name for the skinned wallet
+</ResponseField>
+
+<ResponseField name="icon" type="string" required>
+  Wallet icon as a data URI or URL
+</ResponseField>
+
+## State Types
+
+### State
+
+```typescript
+interface State {
+  wallets: WalletStateMap
+  activeWallet: WalletKey | null
+  activeNetwork: string
+  algodClient: algosdk.Algodv2
+  managerStatus: ManagerStatus
+  networkConfig: Record<string, NetworkConfig>
+  customNetworkConfigs: Record<string, Partial<NetworkConfig>>
+}
+```
+
+The global state managed by WalletManager.
+
+<ResponseField name="wallets" type="WalletStateMap">
+  Map of wallet keys to their connection state
+</ResponseField>
+
+<ResponseField name="activeWallet" type="WalletKey | null">
+  The currently active wallet key, or null if none
+</ResponseField>
+
+<ResponseField name="activeNetwork" type="string">
+  The ID of the currently active network
+</ResponseField>
+
+<ResponseField name="algodClient" type="algosdk.Algodv2">
+  The Algod client instance for the active network
+</ResponseField>
+
+<ResponseField name="managerStatus" type="ManagerStatus">
+  Current status of the wallet manager
+</ResponseField>
+
+<ResponseField name="networkConfig" type="Record<string, NetworkConfig>">
+  All network configurations
+</ResponseField>
+
+<ResponseField name="customNetworkConfigs" type="Record<string, Partial<NetworkConfig>>">
+  User-customized network configurations
+</ResponseField>
+
+### WalletState
+
+```typescript
+interface WalletState {
+  accounts: WalletAccount[]
+  activeAccount: WalletAccount | null
+}
+```
+
+The connection state for a specific wallet.
+
+<ResponseField name="accounts" type="WalletAccount[]">
+  Array of connected accounts
+</ResponseField>
+
+<ResponseField name="activeAccount" type="WalletAccount | null">
+  The currently active account for this wallet
+</ResponseField>
+
+### ManagerStatus
+
+```typescript
+type ManagerStatus = 'initializing' | 'ready'
+```
+
+The initialization status of the WalletManager.
+
+## Transaction Types
+
+### WalletTransaction
+
+```typescript
+interface WalletTransaction {
+  txn: string
+  authAddr?: string
+  msig?: MultisigMetadata
+  signers?: string[]
+  stxn?: string
+  message?: string
+  groupMessage?: string
+}
+```
+
+Wallet transaction format following [ARC-0001](https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0001.md).
+
+<ResponseField name="txn" type="string" required>
+  Base64 encoding of the canonical msgpack encoding of a Transaction
+</ResponseField>
+
+<ResponseField name="authAddr" type="string">
+  Optional authorized address used to sign the transaction when the account is rekeyed
+</ResponseField>
+
+<ResponseField name="msig" type="MultisigMetadata">
+  Multisig metadata used to sign the transaction
+</ResponseField>
+
+<ResponseField name="signers" type="string[]">
+  Optional list of addresses that must sign the transactions
+</ResponseField>
+
+<ResponseField name="stxn" type="string">
+  Optional base64 encoding of a SignedTxn when signers=[]
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Optional message explaining the reason for the transaction
+</ResponseField>
+
+<ResponseField name="groupMessage" type="string">
+  Optional message for the transaction group. Only allowed in the first transaction of a group
+</ResponseField>
+
+### MultisigMetadata
+
+```typescript
+interface MultisigMetadata {
+  version: number
+  threshold: number
+  addrs: string[]
+}
+```
+
+Multisig metadata following [ARC-0001](https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0001.md).
+
+<ResponseField name="version" type="number" required>
+  Multisig version
+</ResponseField>
+
+<ResponseField name="threshold" type="number" required>
+  Authorization requires a subset of signatures equal to or greater than this value
+</ResponseField>
+
+<ResponseField name="addrs" type="string[]" required>
+  List of Algorand addresses of possible signers. Order is important
+</ResponseField>
+
+### SignerTransaction
+
+```typescript
+interface SignerTransaction {
+  txn: algosdk.Transaction
+  authAddr?: string
+  signers?: string[]
+  message?: string
+}
+```
+
+Transaction format with an `algosdk.Transaction` object (used by Pera Wallet).
+
+<ResponseField name="txn" type="algosdk.Transaction" required>
+  The Transaction object to sign
+</ResponseField>
+
+<ResponseField name="authAddr" type="string">
+  Optional authorized address when account is rekeyed
+</ResponseField>
+
+<ResponseField name="signers" type="string[]">
+  Optional list of addresses that must sign. Empty array means skip signing
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Optional message explaining the transaction
+</ResponseField>
+
+## Data Signing Types
+
+### SignMetadata
+
+```typescript
+interface SignMetadata {
+  scope: ScopeType
+  encoding: string
+}
+```
+
+Metadata for arbitrary data signing requests.
+
+<ResponseField name="scope" type="ScopeType" required>
+  The scope of the signature request
+</ResponseField>
+
+<ResponseField name="encoding" type="string" required>
+  The encoding format of the data (e.g., 'base64')
+</ResponseField>
+
+### ScopeType
+
+```typescript
+enum ScopeType {
+  UNKNOWN = -1,
+  AUTH = 1
+}
+```
+
+Scope types for data signing.
+
+### SignDataResponse
+
+```typescript
+interface SignDataResponse extends SignData {
+  signature: Uint8Array
+}
+```
+
+Response from a data signing operation, including the signature.
+
+### Siwa
+
+```typescript
+interface Siwa {
+  domain: string
+  account_address: string
+  uri: string
+  version: string
+  statement?: string
+  nonce?: string
+  'issued-at'?: string
+  'expiration-time'?: string
+  'not-before'?: string
+  'request-id'?: string
+  chain_id: '283'
+  resources?: string[]
+  type: 'ed25519'
+}
+```
+
+Sign In With Algorand (SIWA) message format.
+
+## Error Types
+
+### SignTxnsError
+
+```typescript
+class SignTxnsError extends Error {
+  code: number
+  data?: any
+  
+  constructor(message: string, code: number, data?: any)
+}
+```
+
+Error thrown when transaction signing fails.
+
+<ResponseField name="message" type="string">
+  Error message
+</ResponseField>
+
+<ResponseField name="code" type="number">
+  Error code
+</ResponseField>
+
+<ResponseField name="data" type="any">
+  Additional error data
+</ResponseField>
+
+### SignDataError
+
+```typescript
+class SignDataError extends Error {
+  code: number
+  data?: any
+  
+  constructor(message: string, code: number, data?: any)
+}
+```
+
+Error thrown when data signing fails.
+
+<ResponseField name="message" type="string">
+  Error message
+</ResponseField>
+
+<ResponseField name="code" type="number">
+  Error code
+</ResponseField>
+
+<ResponseField name="data" type="any">
+  Additional error data
+</ResponseField>
+
+## Utility Types
+
+### LogLevel
+
+```typescript
+enum LogLevel {
+  ERROR = 0,
+  WARN = 1,
+  INFO = 2,
+  DEBUG = 3
+}
+```
+
+Logging levels for the WalletManager and wallet implementations.

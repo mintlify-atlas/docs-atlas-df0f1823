@@ -1,0 +1,318 @@
+---
+title: WalletManager
+description: The main orchestrator for wallet initialization, network configuration, and state management.
+---
+
+`WalletManager` is the entry point for integrating use-wallet into your application. It manages wallet instances, network configuration, state persistence, and provides access to connected wallets and signing methods.
+
+## Constructor
+
+```typescript
+new WalletManager(config?: WalletManagerConfig)
+```
+
+<ParamField path="config" type="WalletManagerConfig">
+  Configuration object for the wallet manager
+
+  <Expandable title="properties">
+    <ParamField path="wallets" type="SupportedWallet[]" default="[]">
+      Array of wallet IDs or wallet configuration objects to initialize
+    </ParamField>
+
+    <ParamField path="networks" type="Record<string, NetworkConfig>">
+      Custom network configurations. Defaults to built-in configurations for mainnet, testnet, betanet, fnet, and localnet
+    </ParamField>
+
+    <ParamField path="defaultNetwork" type="string" default="'testnet'">
+      The network to use by default
+    </ParamField>
+
+    <ParamField path="options" type="WalletManagerOptions">
+      Additional configuration options
+      
+      <Expandable title="properties">
+        <ParamField path="resetNetwork" type="boolean" default="false">
+          Whether to reset to the default network on initialization, ignoring persisted network state
+        </ParamField>
+
+        <ParamField path="debug" type="boolean" default="false">
+          Enable debug logging (sets logLevel to DEBUG)
+        </ParamField>
+
+        <ParamField path="logLevel" type="LogLevel">
+          Set the logging level: ERROR, WARN, INFO, or DEBUG
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Example
+
+```typescript
+import { WalletManager, WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.PERA,
+    WalletId.DEFLY,
+    {
+      id: WalletId.WALLETCONNECT,
+      options: { projectId: 'your-project-id' }
+    }
+  ],
+  defaultNetwork: 'testnet'
+})
+
+// Resume sessions for previously connected wallets
+await walletManager.resumeSessions()
+```
+
+## Properties
+
+### wallets
+
+```typescript
+get wallets(): BaseWallet[]
+```
+
+Returns an array of all initialized wallet instances.
+
+### activeWallet
+
+```typescript
+get activeWallet(): BaseWallet | null
+```
+
+Returns the currently active wallet instance, or `null` if no wallet is active.
+
+### activeWalletAccounts
+
+```typescript
+get activeWalletAccounts(): WalletAccount[] | null
+```
+
+Returns the accounts of the active wallet, or `null` if no wallet is active.
+
+### activeWalletAddresses
+
+```typescript
+get activeWalletAddresses(): string[] | null
+```
+
+Returns the addresses of the active wallet's accounts, or `null` if no wallet is active.
+
+### activeAccount
+
+```typescript
+get activeAccount(): WalletAccount | null
+```
+
+Returns the active account of the active wallet, or `null` if no wallet is active.
+
+### activeAddress
+
+```typescript
+get activeAddress(): string | null
+```
+
+Returns the address of the active account, or `null` if no wallet is active.
+
+### algodClient
+
+```typescript
+get algodClient(): algosdk.Algodv2
+set algodClient(client: algosdk.Algodv2)
+```
+
+The Algod client for the currently active network. Can be read or set.
+
+### activeNetwork
+
+```typescript
+get activeNetwork(): string
+```
+
+Returns the ID of the currently active network (e.g., 'mainnet', 'testnet').
+
+### networkConfig
+
+```typescript
+get networkConfig(): Record<string, NetworkConfig>
+```
+
+Returns all network configurations.
+
+### activeNetworkConfig
+
+```typescript
+get activeNetworkConfig(): NetworkConfig
+```
+
+Returns the configuration for the currently active network.
+
+### status
+
+```typescript
+get status(): ManagerStatus
+```
+
+Returns the current status: `'initializing'` or `'ready'`.
+
+### isReady
+
+```typescript
+get isReady(): boolean
+```
+
+Returns `true` if the manager status is `'ready'`.
+
+### signTransactions
+
+```typescript
+get signTransactions(): BaseWallet['signTransactions']
+```
+
+Returns the `signTransactions` method of the active wallet. Throws an error if no wallet is active.
+
+### transactionSigner
+
+```typescript
+get transactionSigner(): algosdk.TransactionSigner
+```
+
+Returns an `algosdk.TransactionSigner` function from the active wallet. Throws an error if no wallet is active.
+
+## Methods
+
+### resumeSessions
+
+```typescript
+async resumeSessions(): Promise<void>
+```
+
+Attempts to resume sessions for all previously connected wallets. Should be called after instantiation to restore wallet connections.
+
+```typescript
+const walletManager = new WalletManager({ wallets: [WalletId.PERA] })
+await walletManager.resumeSessions()
+```
+
+### disconnect
+
+```typescript
+async disconnect(): Promise<void>
+```
+
+Disconnects all connected wallets.
+
+```typescript
+await walletManager.disconnect()
+```
+
+### getWallet
+
+```typescript
+getWallet(walletKey: WalletKey): BaseWallet | undefined
+```
+
+<ParamField path="walletKey" type="WalletKey" required>
+  The wallet key (typically the wallet ID, or composite key for skinned WalletConnect instances)
+</ParamField>
+
+Returns the wallet instance for the given wallet key, or `undefined` if not found.
+
+```typescript
+const peraWallet = walletManager.getWallet(WalletId.PERA)
+if (peraWallet) {
+  await peraWallet.connect()
+}
+```
+
+### setActiveNetwork
+
+```typescript
+async setActiveNetwork(networkId: NetworkId | string): Promise<void>
+```
+
+<ParamField path="networkId" type="NetworkId | string" required>
+  The ID of the network to switch to
+</ParamField>
+
+Switches the active network and updates the Algod client.
+
+```typescript
+await walletManager.setActiveNetwork('mainnet')
+```
+
+### updateAlgodConfig
+
+```typescript
+updateAlgodConfig(networkId: string, algodConfig: Partial<AlgodConfig>): void
+```
+
+<ParamField path="networkId" type="string" required>
+  The ID of the network to update
+</ParamField>
+
+<ParamField path="algodConfig" type="Partial<AlgodConfig>" required>
+  The Algod configuration properties to update
+</ParamField>
+
+Updates the Algod configuration for a specific network. If the network is currently active, the Algod client is recreated with the new configuration.
+
+```typescript
+walletManager.updateAlgodConfig('mainnet', {
+  baseServer: 'https://my-custom-node.com',
+  token: 'my-token'
+})
+```
+
+### resetNetworkConfig
+
+```typescript
+resetNetworkConfig(networkId: string): void
+```
+
+<ParamField path="networkId" type="string" required>
+  The ID of the network to reset
+</ParamField>
+
+Resets the network configuration to its base (initial) configuration, removing any customizations.
+
+```typescript
+walletManager.resetNetworkConfig('mainnet')
+```
+
+### subscribe
+
+```typescript
+subscribe(callback: (state: State) => void): () => void
+```
+
+<ParamField path="callback" type="(state: State) => void" required>
+  Function to call when state changes
+</ParamField>
+
+Subscribes to state changes. Returns an unsubscribe function.
+
+```typescript
+const unsubscribe = walletManager.subscribe((state) => {
+  console.log('Active wallet:', state.activeWallet)
+  console.log('Active network:', state.activeNetwork)
+})
+
+// Later, to unsubscribe
+unsubscribe()
+```
+
+## State Persistence
+
+WalletManager automatically persists wallet connection state to localStorage under the key `@txnlab/use-wallet:v4`. This includes:
+
+- Connected wallets and their accounts
+- Active wallet selection
+- Active network selection
+- Custom network configurations
+
+State is automatically restored when creating a new WalletManager instance.

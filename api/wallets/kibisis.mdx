@@ -1,0 +1,136 @@
+---
+title: Kibisis wallet
+description: API reference for the Kibisis wallet provider in use-wallet
+---
+
+The Kibisis wallet provider enables integration with [Kibisis Wallet](https://kibis.is/), a privacy-focused Algorand wallet implementing the ARC-0027 standard.
+
+## Installation
+
+Install the required peer dependency:
+
+```bash
+npm install @agoralabs-sh/avm-web-provider
+```
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [WalletId.KIBISIS]
+})
+```
+
+## Configuration
+
+Kibisis Wallet does not require any configuration options. It uses the AVM Web Provider SDK to communicate with the wallet.
+
+## Type definition
+
+```typescript
+// No options interface - uses default configuration
+```
+
+## Features
+
+### ARC-0027 compliance
+
+Kibisis implements the [ARC-0027](https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0027.md) standard for AVM blockchain wallet communication, ensuring compatibility and security.
+
+### Privacy focused
+
+Kibisis is designed with privacy as a core principle, giving users control over their data and transactions.
+
+### Browser extension
+
+Available as a browser extension for Chrome, Firefox, and other Chromium-based browsers.
+
+### Method timeouts
+
+Kibisis implements proper timeouts for all operations:
+- **Enable/SignTransactions:** 3 minutes
+- **Disable:** 0.75 seconds
+
+## Methods
+
+### connect()
+
+Initiates connection to Kibisis Wallet via ARC-0027 enable method. Prompts the user to approve the connection.
+
+**Returns:** `Promise<WalletAccount[]>`
+
+**Throws:**
+- `MethodCanceledError`: User cancelled the connection
+- `MethodTimedOutError`: Connection timed out (>3 minutes)
+- `NetworkNotSupportedError`: Network is not supported
+- `UnknownError`: Other errors
+
+### disconnect()
+
+Disconnects from Kibisis Wallet via ARC-0027 disable method.
+
+**Returns:** `Promise<void>`
+
+**Throws:**
+- `MethodTimedOutError`: Disconnect timed out (>0.75 seconds)
+- `NetworkNotSupportedError`: Network is not supported
+
+### signTransactions()
+
+Signs transactions using Kibisis Wallet via ARC-0027 signTransactions method.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+**Throws:**
+- `InvalidInputError`: Group ID mismatch or malformed transactions
+- `InvalidGroupIdError`: Transaction group is invalid
+- `MethodCanceledError`: User cancelled signing
+- `MethodTimedOutError`: Signing timed out (>3 minutes)
+- `UnauthorizedSignerError`: Signer is not authorized
+
+## Session management
+
+Kibisis uses the AVM Web Provider for session management. Sessions are maintained by the browser extension and automatically restored across page reloads.
+
+## Requirements
+
+- Kibisis browser extension must be installed
+- Extension must be configured for the network you're connecting to
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Not supported (browser extension only)
+- **Desktop:** Full support (via browser extension)
+
+## Error handling
+
+Kibisis provides detailed error types that extend the ARC-0027 standard:
+
+```typescript
+try {
+  await wallet.connect()
+} catch (error) {
+  if (error.name === 'MethodCanceledError') {
+    console.log('User cancelled the connection')
+  } else if (error.name === 'MethodTimedOutError') {
+    console.log('Connection timed out')
+  } else if (error.name === 'NetworkNotSupportedError') {
+    console.log('Network not supported')
+  }
+}
+```
+
+## Provider ID
+
+Kibisis uses the provider ID `f6d1c86b-4493-42fb-b88d-a62407b4cdf6` for ARC-0027 communication.
+
+## Source code
+
+View the Kibisis wallet implementation: [kibisis.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/kibisis.ts)

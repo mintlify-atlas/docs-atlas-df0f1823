@@ -1,0 +1,314 @@
+---
+title: "Migrating from v3.x"
+description: "Upgrade guide for migrating from use-wallet v3.x to v4"
+---
+
+Version 4.0.0 brings improvements to use-wallet while maintaining the core architecture from v3:
+
+- Updated to support algosdk v3
+- Enhanced network configuration capabilities
+- Reorganized framework adapter APIs for better separation of concerns
+
+This guide will walk you through the changes needed to upgrade from v3.x. Most applications will require only minor updates to network configuration and imports.
+
+## Upgrading dependencies
+
+<Steps>
+  <Step title="Update use-wallet package">
+    Update your use-wallet package to version 4.0.0 or later.
+    
+    <CodeGroup>
+    ```bash npm
+    npm upgrade @txnlab/use-wallet@^4.0.0
+    # if using React adapter
+    npm upgrade @txnlab/use-wallet-react@^4.0.0
+    # if using Vue adapter
+    npm upgrade @txnlab/use-wallet-vue@^4.0.0
+    # if using Solid adapter
+    npm upgrade @txnlab/use-wallet-solid@^4.0.0
+    # if using Svelte adapter
+    npm upgrade @txnlab/use-wallet-svelte@^4.0.0
+    ```
+    
+    ```bash yarn
+    yarn upgrade @txnlab/use-wallet@^4.0.0
+    # if using React adapter
+    yarn upgrade @txnlab/use-wallet-react@^4.0.0
+    # if using Vue adapter
+    yarn upgrade @txnlab/use-wallet-vue@^4.0.0
+    # if using Solid adapter
+    yarn upgrade @txnlab/use-wallet-solid@^4.0.0
+    # if using Svelte adapter
+    yarn upgrade @txnlab/use-wallet-svelte@^4.0.0
+    ```
+    
+    ```bash pnpm
+    pnpm update @txnlab/use-wallet@^4.0.0
+    # if using React adapter
+    pnpm update @txnlab/use-wallet-react@^4.0.0
+    # if using Vue adapter
+    pnpm update @txnlab/use-wallet-vue@^4.0.0
+    # if using Solid adapter
+    pnpm update @txnlab/use-wallet-solid@^4.0.0
+    # if using Svelte adapter
+    pnpm update @txnlab/use-wallet-svelte@^4.0.0
+    ```
+    
+    ```bash bun
+    bun update @txnlab/use-wallet@^4.0.0
+    # if using React adapter
+    bun update @txnlab/use-wallet-react@^4.0.0
+    # if using Vue adapter
+    bun update @txnlab/use-wallet-vue@^4.0.0
+    # if using Solid adapter
+    bun update @txnlab/use-wallet-solid@^4.0.0
+    # if using Svelte adapter
+    bun update @txnlab/use-wallet-svelte@^4.0.0
+    ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Update algosdk">
+    Update algosdk to version 3.0.0 or later.
+    
+    <CodeGroup>
+    ```bash npm
+    npm upgrade algosdk@^3.0.0
+    ```
+    
+    ```bash yarn
+    yarn upgrade algosdk@^3.0.0
+    ```
+    
+    ```bash pnpm
+    pnpm update algosdk@^3.0.0
+    ```
+    
+    ```bash bun
+    bun update algosdk@^3.0.0
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Support for algosdk v3
+
+Version 4 upgrades from algosdk v2 to v3. The extent of required changes will depend on how your application uses the SDK. Some applications may need minimal changes, while others may require more extensive updates.
+
+<Note>
+  For a complete guide to migrating from algosdk v2 to v3, see the [official migration guide](https://github.com/algorand/js-algorand-sdk/blob/develop/v2_TO_v3_MIGRATION_GUIDE.md).
+</Note>
+
+## Network configuration changes
+
+Along with algosdk v3 support, v4 includes improvements to network configuration. The new approach is more flexible and allows configuring custom AVM-compatible networks without modifying the library's codebase.
+
+### Single network configuration
+
+If your application uses a single public Algorand network (MainNet, TestNet, BetaNet), migrate from:
+
+<CodeGroup>
+```typescript Before (v3.x)
+const manager = new WalletManager({
+  wallets: [...],
+  network: NetworkId.TESTNET,
+  algod: {
+    token: '<YOUR_TOKEN>',
+    baseServer: '<YOUR_SERVER_URL>',
+    port: '<YOUR_PORT>'
+  }
+})
+```
+
+```typescript After (v4.x)
+const manager = new WalletManager({
+  wallets: [...],
+  defaultNetwork: NetworkId.TESTNET, // or just 'testnet'
+  networks: {
+    testnet: {
+      algod: {
+        token: '<YOUR_TOKEN>',
+        baseServer: '<YOUR_SERVER_URL>',
+        port: '<YOUR_PORT>'
+      }
+    }
+  }
+})
+```
+</CodeGroup>
+
+### Multiple network configuration
+
+If your application supports multiple networks, migrate from:
+
+<CodeGroup>
+```typescript Before (v3.x)
+const manager = new WalletManager({
+  wallets: [...],
+  network: NetworkId.TESTNET,
+  algod: {
+    [NetworkId.TESTNET]: {
+      token: '<YOUR_TOKEN>',
+      baseServer: '<YOUR_SERVER_URL>',
+      port: '<YOUR_PORT>'
+    },
+    [NetworkId.MAINNET]: {
+      token: '<YOUR_TOKEN>',
+      baseServer: '<YOUR_SERVER_URL>',
+      port: '<YOUR_PORT>'
+    }
+  }
+})
+```
+
+```typescript After (v4.x)
+const networks = new NetworkConfigBuilder()
+  .testnet({
+    algod: {
+      token: '<YOUR_TOKEN>',
+      baseServer: '<YOUR_SERVER_URL>',
+      port: '<YOUR_PORT>'
+    }
+  })
+  .mainnet({
+    algod: {
+      token: '<YOUR_TOKEN>',
+      baseServer: '<YOUR_SERVER_URL>',
+      port: '<YOUR_PORT>'
+    }
+  })
+  .build()
+
+const manager = new WalletManager({
+  wallets: [...],
+  networks,
+  defaultNetwork: NetworkId.TESTNET, // or just 'testnet'
+})
+```
+</CodeGroup>
+
+### Custom networks
+
+For other AVM networks (like [Voi](https://voi.network/)), you can use the `NetworkConfigBuilder` and its `addNetwork` method:
+
+```typescript
+const networks = new NetworkConfigBuilder()
+  .addNetwork('voi-mainnet', {
+    algod: {
+      token: '',
+      baseServer: 'https://mainnet-api.voi.nodely.dev',
+      port: ''
+    },
+    isTestnet: false,
+    genesisHash: 'r20fSQI8gWe/kFZziNonSPCXLwcQmH/nxROvnnueWOk=',
+    genesisId: 'voimain-v1.0',
+    caipChainId: 'algorand:r20fSQI8gWe_kFZziNonSPCXLwcQmH_n'
+  })
+  .build()
+
+const manager = new WalletManager({
+  wallets: [...],
+  networks,
+  defaultNetwork: 'voi-mainnet'
+})
+```
+
+<Note>
+  See the [Configuration guide](/getting-started/configuration#network-configuration) for more details about network configuration options.
+</Note>
+
+## Framework adapter changes
+
+Network-related functionality has been moved from `useWallet` to a dedicated `useNetwork` hook:
+
+<CodeGroup>
+```typescript Before (v3.x)
+// Network-related returns were part of useWallet
+const {
+  activeNetwork,
+  setActiveNetwork
+} = useWallet()
+```
+
+```typescript After (v4.x)
+// Now provided by useNetwork
+const {
+  activeNetwork,
+  setActiveNetwork,
+  networkConfig,
+  activeNetworkConfig,
+  updateAlgodConfig,
+  resetNetworkConfig
+} = useNetwork()
+```
+</CodeGroup>
+
+If your project supports network switching, you'll need to update your imports and split the network functionality between hooks:
+
+<CodeGroup>
+```tsx React
+// Before - all functionality from useWallet
+import { useWallet } from '@txnlab/use-wallet-react'
+const { activeNetwork, setActiveNetwork, /* other wallet returns */ } = useWallet()
+
+// After - network returns moved to useNetwork
+import { useWallet, useNetwork } from '@txnlab/use-wallet-react'
+const { /* wallet returns */ } = useWallet()
+const { activeNetwork, setActiveNetwork } = useNetwork()
+```
+
+```typescript Vue
+// Before - all functionality from useWallet
+import { useWallet } from '@txnlab/use-wallet-vue'
+const { activeNetwork, setActiveNetwork, /* other wallet returns */ } = useWallet()
+
+// After - network returns moved to useNetwork
+import { useWallet, useNetwork } from '@txnlab/use-wallet-vue'
+const { /* wallet returns */ } = useWallet()
+const { activeNetwork, setActiveNetwork } = useNetwork()
+```
+
+```tsx Solid
+// Before - all functionality from useWallet
+import { useWallet } from '@txnlab/use-wallet-solid'
+const { activeNetwork, setActiveNetwork, /* other wallet returns */ } = useWallet()
+
+// After - network returns moved to useNetwork
+import { useWallet, useNetwork } from '@txnlab/use-wallet-solid'
+const { /* wallet returns */ } = useWallet()
+const { activeNetwork, setActiveNetwork } = useNetwork()
+```
+
+```typescript Svelte
+// Before - all functionality from useWallet
+import { useWallet } from '@txnlab/use-wallet-svelte'
+const { activeNetwork, setActiveNetwork, /* other wallet returns */ } = useWallet()
+
+// After - network returns moved to useNetwork
+import { useWallet, useNetwork } from '@txnlab/use-wallet-svelte'
+const { /* wallet returns */ } = useWallet()
+const { activeNetwork, setActiveNetwork } = useNetwork()
+```
+</CodeGroup>
+
+## Next steps
+
+After completing the migration:
+
+<CardGroup cols={2}>
+  <Card title="Test your application" icon="flask">
+    Test all wallet connections, transactions, and network switching functionality.
+  </Card>
+  
+  <Card title="Review algosdk changes" icon="book" href="https://github.com/algorand/js-algorand-sdk/blob/develop/v2_TO_v3_MIGRATION_GUIDE.md">
+    Check the algosdk v3 migration guide for SDK-specific changes.
+  </Card>
+  
+  <Card title="Configuration guide" icon="gear" href="/getting-started/configuration">
+    Explore the enhanced network configuration options.
+  </Card>
+  
+  <Card title="Switching networks" icon="network-wired" href="/guides/switching-networks">
+    Learn about the new network switching capabilities.
+  </Card>
+</CardGroup>

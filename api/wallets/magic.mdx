@@ -1,0 +1,176 @@
+---
+title: Magic wallet
+description: API reference for the Magic wallet provider in use-wallet
+---
+
+The Magic wallet provider enables integration with [Magic](https://magic.link/), a passwordless authentication service that uses email-based magic links.
+
+## Installation
+
+Install the required peer dependencies:
+
+```bash
+npm install magic-sdk @magic-ext/algorand
+```
+
+## Basic usage
+
+```typescript
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.MAGIC,
+      options: {
+        apiKey: 'YOUR_MAGIC_PUBLISHABLE_KEY'
+      }
+    }
+  ]
+})
+
+// Connect with email
+await wallet.connect({ email: 'user@example.com' })
+```
+
+## Configuration
+
+<ParamField path="apiKey" type="string" required>
+  Your Magic publishable API key from the [Magic Dashboard](https://dashboard.magic.link/).
+</ParamField>
+
+## Type definition
+
+```typescript
+export interface MagicAuthOptions {
+  apiKey?: string
+}
+```
+
+## Features
+
+### Passwordless authentication
+
+Users authenticate using magic links sent to their email. No passwords or private key management required.
+
+### Email-based login
+
+Magic sends a secure link to the user's email. Clicking the link completes authentication and derives the Algorand account.
+
+### Persistent sessions
+
+Magic sessions persist across browser sessions. Users remain logged in until they explicitly log out.
+
+### Single account
+
+Each email address is associated with a single Algorand account. The same email always derives the same account address.
+
+## Methods
+
+### connect()
+
+Initiates Magic authentication. Requires an email address.
+
+**Parameters:**
+- `email` (required): User's email address as a string
+
+**Returns:** `Promise<WalletAccount[]>`
+
+**Example:**
+
+```typescript
+try {
+  const accounts = await wallet.connect({ email: 'user@example.com' })
+  console.log('Connected:', accounts[0].address)
+} catch (error) {
+  console.error('Connection failed:', error)
+}
+```
+
+### disconnect()
+
+Logs out the user from Magic and clears the session.
+
+**Returns:** `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using Magic. The user must be logged in.
+
+**Parameters:**
+- `txnGroup`: Transaction or array of transactions to sign
+- `indexesToSign?`: Optional array of indexes to sign
+
+**Returns:** `Promise<(Uint8Array | null)[]>`
+
+## Session management
+
+Magic manages sessions internally. When `resumeSession()` is called:
+
+1. Checks if user is logged in via `client.user.isLoggedIn()`
+2. If logged in, retrieves user info and account address
+3. If not logged in, disconnects the wallet
+4. Updates stored account if it has changed
+
+## User information
+
+After connection, user metadata is available:
+
+```typescript
+const wallet = wallets.find(w => w.id === WalletId.MAGIC)
+if (wallet) {
+  console.log('User email:', wallet.userInfo?.email)
+  console.log('User address:', wallet.userInfo?.publicAddress)
+}
+```
+
+## Error handling
+
+```typescript
+try {
+  await wallet.connect({ email: 'user@example.com' })
+} catch (error) {
+  if (error.message === 'Magic Link provider requires an email (string) to connect') {
+    // Email was not provided or invalid
+  }
+}
+```
+
+## Platform support
+
+- **Web:** Full support
+- **Mobile:** Full support (mobile web)
+- **Desktop:** Full support
+
+## Authentication flow
+
+1. User provides email address
+2. Magic sends magic link to email
+3. User clicks link in email
+4. Magic authenticates and derives Algorand account
+5. Account address is cached and returned
+
+## Network configuration
+
+Magic's Algorand extension requires an RPC URL in configuration, but it's not used for transaction signing in use-wallet. The library handles all Algorand operations directly.
+
+## Limitations
+
+- Only email-based authentication is supported (no SMS or social login)
+- Each email maps to a single Algorand account
+- Requires active internet connection for authentication
+- Magic link must be clicked from the same browser session
+
+## Security considerations
+
+<Info>
+  Magic manages private keys using threshold cryptography. The private key is split across Magic's infrastructure and never exists in a single location.
+</Info>
+
+<Warning>
+  Users must have access to their email to authenticate. If they lose access to their email, they lose access to their Algorand account.
+</Warning>
+
+## Source code
+
+View the Magic wallet implementation: [magic.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/magic.ts)

@@ -1,0 +1,385 @@
+---
+title: Secure key handling
+description: Utilities for safely managing private keys and sensitive cryptographic material
+---
+
+The secure key utilities provide defense-in-depth protection for private key handling through memory zeroing, scoped access patterns, and automatic cleanup. These utilities ensure that sensitive cryptographic material is handled safely and cleared from memory immediately after use.
+
+## Security model
+
+The secure key system implements multiple layers of protection:
+
+1. **Memory zeroing** - Overwrites key material before releasing references
+2. **Scoped key access** - Keys are only available within controlled callbacks
+3. **Automatic cleanup** - Keys are cleared after use via try/finally patterns
+4. **No persistence** - Keys are never stored to disk or localStorage
+
+<Warning>
+While JavaScript doesn't guarantee immediate memory clearing due to garbage collection, these utilities provide defense-in-depth by overwriting buffer contents immediately and reducing the window where key material is accessible.
+</Warning>
+
+## SecureKeyContainer
+
+A secure container for holding private key material with controlled access and automatic cleanup.
+
+### Constructor
+
+```typescript
+constructor(secretKey: Uint8Array)
+```
+
+Creates a new secure container holding a copy of the provided secret key.
+
+<ParamField path="secretKey" type="Uint8Array" required>
+  The secret key to store securely. A copy is created internally.
+</ParamField>
+
+<Warning>
+After creating a `SecureKeyContainer`, you should immediately zero your original copy of the secret key using `zeroMemory()`.
+</Warning>
+
+### Properties
+
+#### isCleared
+
+```typescript
+get isCleared(): boolean
+```
+
+Check if the key has been cleared from the container.
+
+**Returns:** `true` if the key has been cleared, `false` otherwise.
+
+### Methods
+
+#### useKey
+
+```typescript
+async useKey<T>(callback: (secretKey: Uint8Array) => Promise<T>): Promise<T>
+```
+
+Execute an async callback with access to the secret key. The key is automatically cleared if an error occurs.
+
+<ParamField path="callback" type="(secretKey: Uint8Array) => Promise<T>" required>
+  Async function that receives the secret key and returns a result. The key reference is only valid within this callback.
+</ParamField>
+
+**Returns:** The result returned by the callback.
+
+**Throws:** Error if the key has already been cleared.
+
+**Example:**
+
+```typescript
+const container = new SecureKeyContainer(secretKey)
+
+try {
+  const result = await container.useKey(async (sk) => {
+    // Use the secret key for signing
+    const signed = transaction.signTxn(sk)
+    return signed
+  })
+  // Use result
+} finally {
+  container.clear()
+}
+```
+
+#### useKeySync
+
+```typescript
+useKeySync<T>(callback: (secretKey: Uint8Array) => T): T
+```
+
+Execute a synchronous callback with access to the secret key.
+
+<ParamField path="callback" type="(secretKey: Uint8Array) => T" required>
+  Synchronous function that receives the secret key and returns a result.
+</ParamField>
+
+**Returns:** The result returned by the callback.
+
+**Throws:** Error if the key has already been cleared.
+
+**Example:**
+
+```typescript
+const container = new SecureKeyContainer(secretKey)
+
+try {
+  const result = container.useKeySync((sk) => {
+    // Perform synchronous operation
+    return deriveSomething(sk)
+  })
+} finally {
+  container.clear()
+}
+```
+
+#### clear
+
+```typescript
+clear(): void
+```
+
+Securely clear the key from memory. This should be called when the key is no longer needed.
+
+The key buffer is overwritten with zeros before the reference is released. This method is idempotent - calling it multiple times is safe.
+
+**Example:**
+
+```typescript
+const container = new SecureKeyContainer(secretKey)
+// ... use the container
+container.clear() // Key is zeroed and cleared
+```
+
+## Functions
+
+### zeroMemory
+
+```typescript
+function zeroMemory(buffer: Uint8Array): void
+```
+
+Securely zeros out a `Uint8Array` by overwriting all bytes with zeros. This helps prevent key material from lingering in memory.
+
+<ParamField path="buffer" type="Uint8Array" required>
+  The buffer to zero out. The buffer is modified in place.
+</ParamField>
+
+The function uses a two-pass approach to prevent compiler optimizations from removing the zeroing operation:
+
+1. Fills the buffer with random values using `crypto.getRandomValues()`
+2. Overwrites with zeros using `buffer.fill(0)`
+
+**Example:**
+
+```typescript
+const privateKey = new Uint8Array(64)
+// ... use the private key
+zeroMemory(privateKey) // Securely erase from memory
+```
+
+### zeroString
+
+```typescript
+function zeroString(str: string): string
+```
+
+Securely zeros out a string by creating a mutable copy and clearing it. Returns an empty string.
+
+<ParamField path="str" type="string" required>
+  The string to zero. Due to JavaScript string immutability, the original string may still exist in memory, but mutable references are cleared.
+</ParamField>
+
+**Returns:** An empty string.
+
+<Warning>
+Due to JavaScript string immutability, this function cannot guarantee complete erasure of the original string from memory. Prefer using `Uint8Array` for sensitive data when possible.
+</Warning>
+
+**Example:**
+
+```typescript
+let mnemonic = "word1 word2 word3 ..."
+// ... use the mnemonic
+mnemonic = zeroString(mnemonic) // Returns ""
+```
+
+### withSecureKey
+
+```typescript
+async function withSecureKey<T>(
+  secretKey: Uint8Array,
+  callback: (container: SecureKeyContainer) => Promise<T>
+): Promise<T>
+```
+
+Execute an async function with a temporary secret key that is automatically cleared after the function completes (success or error). This is the preferred pattern for one-time key operations.
+
+<ParamField path="secretKey" type="Uint8Array" required>
+  The secret key to protect. A `SecureKeyContainer` is created internally.
+</ParamField>
+
+<ParamField path="callback" type="(container: SecureKeyContainer) => Promise<T>" required>
+  Async function that receives the secure container and returns a result.
+</ParamField>
+
+**Returns:** The result returned by the callback.
+
+The key is automatically cleared in a `finally` block, ensuring cleanup even if the callback throws an error.
+
+**Example:**
+
+```typescript
+import { withSecureKey } from '@txnlab/use-wallet'
+
+const result = await withSecureKey(privateKey, async (container) => {
+  return await container.useKey(async (sk) => {
+    // Sign transaction with the secret key
+    return transaction.signTxn(sk)
+  })
+})
+// privateKey is automatically cleared at this point
+```
+
+### withSecureKeySync
+
+```typescript
+function withSecureKeySync<T>(
+  secretKey: Uint8Array,
+  callback: (container: SecureKeyContainer) => T
+): T
+```
+
+Synchronous version of `withSecureKey` for non-async operations.
+
+<ParamField path="secretKey" type="Uint8Array" required>
+  The secret key to protect. A `SecureKeyContainer` is created internally.
+</ParamField>
+
+<ParamField path="callback" type="(container: SecureKeyContainer) => T" required>
+  Synchronous function that receives the secure container and returns a result.
+</ParamField>
+
+**Returns:** The result returned by the callback.
+
+**Example:**
+
+```typescript
+import { withSecureKeySync } from '@txnlab/use-wallet'
+
+const result = withSecureKeySync(privateKey, (container) => {
+  return container.useKeySync((sk) => {
+    // Perform synchronous cryptographic operation
+    return derivePublicKey(sk)
+  })
+})
+// privateKey is automatically cleared
+```
+
+## Usage patterns
+
+### One-time operations
+
+For one-time key operations, use `withSecureKey` or `withSecureKeySync`:
+
+```typescript
+// Async operation
+const signed = await withSecureKey(privateKey, async (container) => {
+  return await container.useKey(async (sk) => {
+    return transaction.signTxn(sk)
+  })
+})
+
+// Sync operation
+const publicKey = withSecureKeySync(privateKey, (container) => {
+  return container.useKeySync((sk) => derivePublicKey(sk))
+})
+```
+
+### Multiple operations
+
+For multiple operations with the same key, create a container and clear it when done:
+
+```typescript
+const container = new SecureKeyContainer(privateKey)
+
+try {
+  // Multiple operations
+  const result1 = await container.useKey(async (sk) => {
+    return await operation1(sk)
+  })
+  
+  const result2 = await container.useKey(async (sk) => {
+    return await operation2(sk)
+  })
+  
+  // Use results
+} finally {
+  // Always clear in finally block
+  container.clear()
+}
+```
+
+### Wallet implementations
+
+Wallets that handle raw private keys should use these utilities:
+
+```typescript
+export class MyWallet extends BaseWallet {
+  private keyContainer: SecureKeyContainer | null = null
+  
+  async connect() {
+    const secretKey = await getPrivateKeyFromSource()
+    this.keyContainer = new SecureKeyContainer(secretKey)
+    zeroMemory(secretKey) // Clear the original
+    // ... setup wallet
+  }
+  
+  async signTransactions(txns: Transaction[]) {
+    if (!this.keyContainer) {
+      throw new Error('Wallet not connected')
+    }
+    
+    return await this.keyContainer.useKey(async (sk) => {
+      return txns.map(txn => txn.signTxn(sk))
+    })
+  }
+  
+  async disconnect() {
+    if (this.keyContainer) {
+      this.keyContainer.clear()
+      this.keyContainer = null
+    }
+  }
+}
+```
+
+## Security best practices
+
+<Warning>
+**Never persist private keys to localStorage, cookies, or any storage mechanism.** Keys should only exist in memory during active use and be cleared immediately after.
+</Warning>
+
+1. **Clear keys immediately** - Always clear keys as soon as you're done using them
+2. **Use try/finally blocks** - Ensure cleanup happens even if operations fail
+3. **Prefer Uint8Array over strings** - Binary data can be reliably zeroed, strings cannot
+4. **Avoid logging keys** - Never log, console.log, or display private keys
+5. **Use scoped access** - Keep key access confined to the smallest possible scope
+6. **Never copy unnecessarily** - Minimize the number of copies of key material in memory
+
+## Implementation notes
+
+### Memory zeroing technique
+
+The `zeroMemory` function uses a two-pass approach to prevent compiler optimizations:
+
+```typescript
+// Pass 1: Fill with random values to prevent optimization
+crypto.getRandomValues(buffer)
+
+// Pass 2: Zero out the buffer
+buffer.fill(0)
+```
+
+This technique makes it more likely that the zeroing operation will not be optimized away by the JavaScript engine or JIT compiler.
+
+### String immutability
+
+JavaScript strings are immutable, which means `zeroString` cannot guarantee complete erasure of string data from memory. For this reason:
+
+- The secure key system uses `Uint8Array` internally
+- Mnemonics and other string-based keys should be converted to binary form as quickly as possible
+- Never use strings for long-term key storage
+
+### Garbage collection
+
+JavaScript's garbage collector runs on its own schedule and may leave sensitive data in memory longer than desired. The secure key utilities mitigate this by:
+
+1. Overwriting key buffers immediately when cleared
+2. Setting references to `null` to help the GC identify unused memory
+3. Reducing the window where key material is accessible
+
+While not perfect, this approach significantly reduces the attack surface for memory-based attacks.

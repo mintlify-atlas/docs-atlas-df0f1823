@@ -1,0 +1,386 @@
+---
+title: Installation
+description: Install @txnlab/use-wallet and configure wallet providers for your application
+---
+
+# Installation
+
+This guide walks you through installing the library and its dependencies.
+
+## Core library
+
+The core library (`@txnlab/use-wallet`) is framework-agnostic and can be used in any TypeScript/JavaScript project.
+
+<CodeGroup>
+
+```bash npm
+npm install @txnlab/use-wallet algosdk
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet algosdk
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet algosdk
+```
+
+</CodeGroup>
+
+<Note>
+The `algosdk` package is a peer dependency and must be installed separately.
+</Note>
+
+## Framework adapters
+
+If you're using a reactive framework, install the corresponding adapter package instead of (or in addition to) the core library.
+
+<Tabs>
+  <Tab title="React">
+    <CodeGroup>
+
+```bash npm
+npm install @txnlab/use-wallet-react algosdk
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet-react algosdk
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet-react algosdk
+```
+
+    </CodeGroup>
+
+    The React adapter re-exports all types and classes from the core library, so you typically only need to install `@txnlab/use-wallet-react`.
+
+    **Peer dependencies:**
+    - React 17, 18, or 19
+    - algosdk ^3.0.0
+  </Tab>
+
+  <Tab title="Vue">
+    <CodeGroup>
+
+```bash npm
+npm install @txnlab/use-wallet-vue algosdk vue
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet-vue algosdk vue
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet-vue algosdk vue
+```
+
+    </CodeGroup>
+
+    **Peer dependencies:**
+    - Vue 3.x
+    - algosdk ^3.0.0
+  </Tab>
+
+  <Tab title="SolidJS">
+    <CodeGroup>
+
+```bash npm
+npm install @txnlab/use-wallet-solid algosdk solid-js
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet-solid algosdk solid-js
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet-solid algosdk solid-js
+```
+
+    </CodeGroup>
+
+    **Peer dependencies:**
+    - solid-js (compatible version)
+    - algosdk ^3.0.0
+  </Tab>
+
+  <Tab title="Svelte">
+    <CodeGroup>
+
+```bash npm
+npm install @txnlab/use-wallet-svelte algosdk svelte
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet-svelte algosdk svelte
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet-svelte algosdk svelte
+```
+
+    </CodeGroup>
+
+    **Peer dependencies:**
+    - Svelte 5.x
+    - algosdk ^3.0.0
+  </Tab>
+</Tabs>
+
+## Wallet provider packages
+
+Wallet provider SDKs are **optional peer dependencies**. Install only the packages for wallets you want to support in your application.
+
+### Pera Wallet
+
+<CodeGroup>
+
+```bash npm
+npm install @perawallet/connect
+```
+
+```bash yarn
+yarn add @perawallet/connect
+```
+
+```bash pnpm
+pnpm add @perawallet/connect
+```
+
+</CodeGroup>
+
+**Version:** ^1.4.1
+
+### Defly Wallet
+
+<CodeGroup>
+
+```bash npm
+npm install @blockshake/defly-connect
+```
+
+```bash yarn
+yarn add @blockshake/defly-connect
+```
+
+```bash pnpm
+pnpm add @blockshake/defly-connect
+```
+
+</CodeGroup>
+
+**Version:** ^1.2.1
+
+### WalletConnect
+
+<CodeGroup>
+
+```bash npm
+npm install @walletconnect/modal @walletconnect/sign-client
+```
+
+```bash yarn
+yarn add @walletconnect/modal @walletconnect/sign-client
+```
+
+```bash pnpm
+pnpm add @walletconnect/modal @walletconnect/sign-client
+```
+
+</CodeGroup>
+
+**Versions:** 
+- @walletconnect/modal ^2.7.0
+- @walletconnect/sign-client ^2.23.4
+
+<Note>
+You'll need a WalletConnect project ID. Get one free at [cloud.walletconnect.com](https://cloud.walletconnect.com).
+</Note>
+
+### Lute Wallet
+
+<CodeGroup>
+
+```bash npm
+npm install lute-connect
+```
+
+```bash yarn
+yarn add lute-connect
+```
+
+```bash pnpm
+pnpm add lute-connect
+```
+
+</CodeGroup>
+
+**Version:** ^1.6.3
+
+### Magic (Email authentication)
+
+<CodeGroup>
+
+```bash npm
+npm install magic-sdk @magic-ext/algorand
+```
+
+```bash yarn
+yarn add magic-sdk @magic-ext/algorand
+```
+
+```bash pnpm
+pnpm add magic-sdk @magic-ext/algorand
+```
+
+</CodeGroup>
+
+**Versions:**
+- magic-sdk ^29.4.2
+- @magic-ext/algorand ^24.4.2
+
+<Note>
+Magic requires an API key. Sign up at [magic.link](https://magic.link).
+</Note>
+
+### Web3Auth
+
+<CodeGroup>
+
+```bash npm
+npm install @web3auth/modal @web3auth/base @web3auth/base-provider
+```
+
+```bash yarn
+yarn add @web3auth/modal @web3auth/base @web3auth/base-provider
+```
+
+```bash pnpm
+pnpm add @web3auth/modal @web3auth/base @web3auth/base-provider
+```
+
+</CodeGroup>
+
+**Version:** ^9.0.0 (all packages)
+
+<Note>
+Web3Auth requires a client ID. Register at [dashboard.web3auth.io](https://dashboard.web3auth.io).
+</Note>
+
+## Wallet-specific requirements
+
+### Exodus
+
+No additional packages required. Exodus uses the [AVM Web Provider API](https://github.com/agoralabs-sh/avm-web-provider).
+
+### Kibisis
+
+No additional packages required. Kibisis uses the AVM Web Provider API.
+
+### KMD (Local development)
+
+No additional packages required. KMD connects to a local Algorand node running the Key Management Daemon.
+
+<Warning>
+KMD is only for local development. Never use it in production.
+</Warning>
+
+### Defly Web
+
+No additional packages required. This is the browser extension version of Defly that uses the AVM Web Provider API.
+
+### Mnemonic
+
+No additional packages required. Allows direct connection via 25-word mnemonic phrase.
+
+<Warning>
+Handle mnemonics with extreme care. Never log or persist them. Only use for development/testing.
+</Warning>
+
+## TypeScript configuration
+
+If you're using TypeScript, ensure your `tsconfig.json` includes:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler", // or "node16", "nodenext"
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true
+  }
+}
+```
+
+## Bundle considerations
+
+### Tree shaking
+
+The library is built with ESM support and tree shaking in mind. Only the wallet providers you configure will be included in your bundle.
+
+### Polyfills
+
+Some wallet SDKs require Node.js polyfills in browser environments. If you encounter build errors related to Node.js modules:
+
+<Tabs>
+  <Tab title="Vite">
+    Install polyfill plugins:
+
+    ```bash
+    npm install vite-plugin-node-polyfills
+    ```
+
+    Update `vite.config.ts`:
+
+    ```typescript vite.config.ts
+    import { defineConfig } from 'vite'
+    import { nodePolyfills } from 'vite-plugin-node-polyfills'
+
+    export default defineConfig({
+      plugins: [
+        nodePolyfills({
+          include: ['buffer', 'crypto', 'stream']
+        })
+      ]
+    })
+    ```
+  </Tab>
+
+  <Tab title="Next.js">
+    Next.js 13+ should handle this automatically. If you encounter issues, you may need webpack configuration:
+
+    ```javascript next.config.js
+    module.exports = {
+      webpack: (config) => {
+        config.resolve.fallback = {
+          ...config.resolve.fallback,
+          crypto: require.resolve('crypto-browserify'),
+          stream: require.resolve('stream-browserify'),
+          buffer: require.resolve('buffer')
+        }
+        return config
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Webpack">
+    ```javascript webpack.config.js
+    module.exports = {
+      resolve: {
+        fallback: {
+          crypto: require.resolve('crypto-browserify'),
+          stream: require.resolve('stream-browserify'),
+          buffer: require.resolve('buffer')
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Next steps
+
+<Card title="Quick start guide" icon="rocket" href="/quickstart">
+  Learn how to set up wallet connections in your application
+</Card>

@@ -1,0 +1,798 @@
+---
+title: useWallet
+description: Reactive access to wallet state and methods across all framework adapters
+---
+
+The `useWallet` hook/composable provides reactive access to wallet state and methods from the WalletManager. It's available for React, Vue, Solid, and Svelte, offering a consistent API across frameworks while respecting each framework's patterns and conventions.
+
+## Basic usage
+
+<Tabs>
+  <Tab title="React">
+    ```tsx
+    import { useWallet } from '@txnlab/use-wallet-react'
+
+    function WalletStatus() {
+      const { activeAccount, wallets } = useWallet()
+
+      if (!activeAccount) {
+        return <div>No wallet connected</div>
+      }
+
+      return (
+        <div>
+          <div>Account: {activeAccount.name}</div>
+          <div>Address: {activeAccount.address}</div>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Vue">
+    ```vue
+    <script setup>
+    import { useWallet } from '@txnlab/use-wallet-vue'
+
+    const { activeAccount, wallets } = useWallet()
+    </script>
+
+    <template>
+      <div v-if="!activeAccount">
+        No wallet connected
+      </div>
+      <div v-else>
+        <div>Account: {{ activeAccount.name }}</div>
+        <div>Address: {{ activeAccount.address }}</div>
+      </div>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Solid">
+    ```tsx
+    import { useWallet } from '@txnlab/use-wallet-solid'
+    import { Show } from 'solid-js'
+
+    function WalletStatus() {
+      const { activeAccount, wallets } = useWallet()
+
+      return (
+        <Show when={activeAccount()} fallback={<div>No wallet connected</div>}>
+          <div>
+            <div>Account: {activeAccount()?.name}</div>
+            <div>Address: {activeAccount()?.address}</div>
+          </div>
+        </Show>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Svelte">
+    ```svelte
+    <script lang="ts">
+    import { useWallet } from '@txnlab/use-wallet-svelte'
+
+    const { activeAccount, wallets } = useWallet()
+    </script>
+
+    {#if !activeAccount.current}
+      <div>No wallet connected</div>
+    {:else}
+      <div>
+        <div>Account: {activeAccount.current.name}</div>
+        <div>Address: {activeAccount.current.address}</div>
+      </div>
+    {/if}
+    ```
+  </Tab>
+</Tabs>
+
+## Return values
+
+### State properties
+
+<ResponseField name="wallets" type="Wallet[]" required>
+  Array of all configured wallet instances. Each wallet includes connection status, accounts, and methods.
+
+  <Expandable title="Wallet interface">
+    <ResponseField name="id" type="WalletId" required>
+      Wallet identifier (e.g., `WalletId.PERA`, `WalletId.DEFLY`)
+    </ResponseField>
+
+    <ResponseField name="walletKey" type="WalletKey" required>
+      Unique key for this wallet instance. Used for skinned WalletConnect instances.
+    </ResponseField>
+
+    <ResponseField name="metadata" type="WalletMetadata" required>
+      Wallet display metadata including name and icon
+    </ResponseField>
+
+    <ResponseField name="accounts" type="WalletAccount[]" required>
+      Array of connected accounts
+    </ResponseField>
+
+    <ResponseField name="activeAccount" type="WalletAccount | null" required>
+      Currently selected account for this wallet
+    </ResponseField>
+
+    <ResponseField name="isConnected" type="boolean" required>
+      Whether this wallet has active accounts
+    </ResponseField>
+
+    <ResponseField name="isActive" type="boolean" required>
+      Whether this is the currently active wallet
+    </ResponseField>
+
+    <ResponseField name="canSignData" type="boolean" required>
+      Whether this wallet supports arbitrary data signing (ARC-0076)
+    </ResponseField>
+
+    <ResponseField name="canUsePrivateKey" type="boolean" required>
+      Whether this wallet supports direct private key access
+    </ResponseField>
+
+    <ResponseField name="connect" type="(args?: Record<string, any>) => Promise<WalletAccount[]>" required>
+      Connect to this wallet and return connected accounts
+    </ResponseField>
+
+    <ResponseField name="disconnect" type="() => Promise<void>" required>
+      Disconnect this wallet and clear its session
+    </ResponseField>
+
+    <ResponseField name="setActive" type="() => void" required>
+      Set this wallet as the active wallet
+    </ResponseField>
+
+    <ResponseField name="setActiveAccount" type="(address: string) => void" required>
+      Set the active account for this wallet
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="activeWallet" type="Wallet | null" required>
+  The currently active wallet instance, or `null` if no wallet is active
+</ResponseField>
+
+<ResponseField name="activeWalletAccounts" type="WalletAccount[] | null" required>
+  Array of accounts from the active wallet, or `null` if no wallet is active
+</ResponseField>
+
+<ResponseField name="activeWalletAddresses" type="string[] | null" required>
+  Array of addresses from the active wallet's accounts, or `null` if no wallet is active
+</ResponseField>
+
+<ResponseField name="activeAccount" type="WalletAccount | null" required>
+  The currently selected account from the active wallet
+
+  <Expandable title="WalletAccount interface">
+    <ResponseField name="name" type="string" required>
+      Account name or label
+    </ResponseField>
+
+    <ResponseField name="address" type="string" required>
+      Algorand address of the account
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="activeAddress" type="string | null" required>
+  Address of the currently active account, or `null` if no account is active
+</ResponseField>
+
+<ResponseField name="isReady" type="boolean" required>
+  Whether the WalletManager has finished initialization. Returns `true` when all wallets are initialized and session resumption is complete.
+</ResponseField>
+
+<ResponseField name="algodClient" type="algosdk.Algodv2" required>
+  Algod client instance for the currently active network
+</ResponseField>
+
+### Methods
+
+<ResponseField name="signTransactions" type="function" required>
+  Sign a group of transactions with the active wallet.
+
+  ```typescript
+  signTransactions<T extends algosdk.Transaction[] | Uint8Array[]>(
+    txnGroup: T | T[],
+    indexesToSign?: number[]
+  ): Promise<(Uint8Array | null)[]>
+  ```
+
+  <Expandable title="Parameters">
+    <ParamField path="txnGroup" type="Transaction[] | Uint8Array[] | Transaction[][] | Uint8Array[][]" required>
+      Transaction(s) to sign. Can be:
+      - Single transaction group as array of `Transaction` objects
+      - Single transaction group as array of encoded transactions (`Uint8Array`)
+      - Nested array of transaction groups
+    </ParamField>
+
+    <ParamField path="indexesToSign" type="number[]">
+      Optional array of indexes to sign. If not provided, all transactions will be signed by the active account.
+    </ParamField>
+  </Expandable>
+
+  **Returns:** Array of signed transactions as `Uint8Array`, or `null` for transactions not signed by this wallet
+
+  **Throws:** Error if no active wallet is connected
+</ResponseField>
+
+<ResponseField name="transactionSigner" type="algosdk.TransactionSigner" required>
+  Transaction signer function compatible with `algosdk.AtomicTransactionComposer`.
+
+  ```typescript
+  transactionSigner(
+    txnGroup: algosdk.Transaction[],
+    indexesToSign: number[]
+  ): Promise<Uint8Array[]>
+  ```
+
+  <Expandable title="Parameters">
+    <ParamField path="txnGroup" type="Transaction[]" required>
+      Array of transactions to sign
+    </ParamField>
+
+    <ParamField path="indexesToSign" type="number[]" required>
+      Indexes of transactions to sign
+    </ParamField>
+  </Expandable>
+
+  **Returns:** Array of signed transactions as `Uint8Array`
+
+  **Throws:** Error if no active wallet is connected
+</ResponseField>
+
+<ResponseField name="signData" type="function">
+  Sign arbitrary data with the active wallet (ARC-0076).
+
+  ```typescript
+  signData(
+    data: string,
+    metadata: SignMetadata
+  ): Promise<SignDataResponse>
+  ```
+
+  <Expandable title="Parameters">
+    <ParamField path="data" type="string" required>
+      Data to sign (typically base64 encoded)
+    </ParamField>
+
+    <ParamField path="metadata" type="SignMetadata" required>
+      Signing metadata
+
+      ```typescript
+      interface SignMetadata {
+        scope: ScopeType  // e.g., ScopeType.AUTH
+        encoding: string  // e.g., 'base64'
+      }
+      ```
+    </ParamField>
+  </Expandable>
+
+  **Returns:** `SignDataResponse` object containing the signature and metadata
+
+  **Throws:** Error if active wallet doesn't support data signing or if signing fails
+
+  <Note>
+    Not all wallets support arbitrary data signing. Check `activeWallet.canSignData` before calling.
+  </Note>
+</ResponseField>
+
+<ResponseField name="withPrivateKey" type="function">
+  Execute a callback with access to the active account's private key.
+
+  ```typescript
+  withPrivateKey<T>(
+    callback: (secretKey: Uint8Array) => Promise<T>
+  ): Promise<T>
+  ```
+
+  <Expandable title="Parameters">
+    <ParamField path="callback" type="(secretKey: Uint8Array) => Promise<T>" required>
+      Callback function that receives the private key. The key is automatically zeroed from memory after the callback completes.
+    </ParamField>
+  </Expandable>
+
+  **Returns:** The return value of the callback
+
+  **Throws:** Error if active wallet doesn't support private key access
+
+  <Warning>
+    Only available for wallets that manage private keys locally (e.g., Mnemonic, Web3Auth). Never persists keys - they are cleared immediately after use.
+  </Warning>
+</ResponseField>
+
+## Framework-specific details
+
+### React
+
+<Tabs>
+  <Tab title="Setup">
+    ```tsx
+    import { WalletProvider, WalletManager } from '@txnlab/use-wallet-react'
+
+    const manager = new WalletManager({
+      wallets: [WalletId.PERA, WalletId.DEFLY],
+      network: NetworkId.TESTNET
+    })
+
+    function App() {
+      return (
+        <WalletProvider manager={manager}>
+          <YourComponents />
+        </WalletProvider>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="State access">
+    React provides state directly as properties:
+
+    ```tsx
+    const { activeAccount, wallets } = useWallet()
+
+    // Direct property access
+    if (activeAccount) {
+      console.log(activeAccount.address)
+    }
+    ```
+  </Tab>
+
+  <Tab title="Additional exports">
+    <ResponseField name="setAlgodClient" type="React.Dispatch<React.SetStateAction<algosdk.Algodv2>>">
+      React state setter for manually updating the Algod client. Rarely needed - use `useNetwork().setActiveNetwork()` instead.
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+### Vue
+
+<Tabs>
+  <Tab title="Setup">
+    ```typescript
+    import { WalletManagerPlugin } from '@txnlab/use-wallet-vue'
+    import { createApp } from 'vue'
+
+    const app = createApp(App)
+    app.use(WalletManagerPlugin, {
+      wallets: [WalletId.PERA, WalletId.DEFLY],
+      network: NetworkId.TESTNET
+    })
+    ```
+  </Tab>
+
+  <Tab title="State access">
+    Vue returns reactive refs that auto-unwrap in templates:
+
+    ```vue
+    <script setup>
+    const { activeAccount, wallets } = useWallet()
+
+    // Access .value in script
+    if (activeAccount.value) {
+      console.log(activeAccount.value.address)
+    }
+    </script>
+
+    <template>
+      <!-- Auto-unwrapped in templates -->
+      <div>{{ activeAccount.address }}</div>
+    </template>
+    ```
+  </Tab>
+</Tabs>
+
+### Solid
+
+<Tabs>
+  <Tab title="Setup">
+    ```tsx
+    import { WalletProvider, WalletManager } from '@txnlab/use-wallet-solid'
+
+    const manager = new WalletManager({
+      wallets: [WalletId.PERA, WalletId.DEFLY],
+      network: NetworkId.TESTNET
+    })
+
+    function App() {
+      return (
+        <WalletProvider manager={manager}>
+          <YourComponents />
+        </WalletProvider>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="State access">
+    Solid uses getter functions for reactive state:
+
+    ```tsx
+    const { activeAccount, wallets } = useWallet()
+
+    // Access via function call
+    if (activeAccount()) {
+      console.log(activeAccount()?.address)
+    }
+    ```
+  </Tab>
+
+  <Tab title="Additional exports">
+    <ResponseField name="useWalletManager" type="() => WalletManager">
+      Access the underlying WalletManager instance directly
+    </ResponseField>
+
+    <ResponseField name="isWalletActive" type="(walletKey: WalletKey) => boolean">
+      Check if a specific wallet is active
+    </ResponseField>
+
+    <ResponseField name="isWalletConnected" type="(walletKey: WalletKey) => boolean">
+      Check if a specific wallet has connected accounts
+    </ResponseField>
+
+    <ResponseField name="activeWalletState" type="() => WalletState | null">
+      Get the state of the active wallet
+    </ResponseField>
+
+    <ResponseField name="activeWalletId" type="() => WalletKey | null">
+      Get the active wallet's key
+    </ResponseField>
+
+    <ResponseField name="walletStore" type="Store<State>">
+      Direct access to the underlying store
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+### Svelte
+
+<Tabs>
+  <Tab title="Setup">
+    ```svelte
+    <script lang="ts">
+    import { useWalletContext, WalletManager } from '@txnlab/use-wallet-svelte'
+
+    const manager = new WalletManager({
+      wallets: [WalletId.PERA, WalletId.DEFLY],
+      network: NetworkId.TESTNET
+    })
+
+    useWalletContext(manager)
+
+    let { children } = $props()
+    </script>
+
+    {@render children()}
+    ```
+  </Tab>
+
+  <Tab title="State access">
+    Svelte uses `.current` to access reactive values:
+
+    ```svelte
+    <script lang="ts">
+    const { activeAccount, wallets } = useWallet()
+
+    // Access via .current property
+    if (activeAccount.current) {
+      console.log(activeAccount.current.address)
+    }
+    </script>
+
+    <template>
+    {#if activeAccount.current}
+      <div>{activeAccount.current.address}</div>
+    {/if}
+    ```
+  </Tab>
+
+  <Tab title="Additional exports">
+    <ResponseField name="useWalletManager" type="() => WalletManager">
+      Access the underlying WalletManager instance directly
+    </ResponseField>
+
+    <ResponseField name="activeWallet" type="() => Wallet | undefined">
+      Get the active wallet instance (as a getter function)
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+## Complete example
+
+<Tabs>
+  <Tab title="React">
+    ```tsx
+    import { useWallet, WalletId } from '@txnlab/use-wallet-react'
+
+    function WalletComponent() {
+      const {
+        activeAccount,
+        wallets,
+        signTransactions
+      } = useWallet()
+
+      const handleConnect = async () => {
+        const pera = wallets.find((w) => w.id === WalletId.PERA)
+        if (!pera) return
+
+        try {
+          await pera.connect()
+        } catch (error) {
+          console.error('Connection failed:', error)
+        }
+      }
+
+      const handleDisconnect = async () => {
+        const pera = wallets.find((w) => w.id === WalletId.PERA)
+        if (!pera) return
+
+        try {
+          await pera.disconnect()
+        } catch (error) {
+          console.error('Disconnect failed:', error)
+        }
+      }
+
+      const handleSign = async () => {
+        try {
+          const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+            from: activeAccount!.address,
+            to: 'RECEIVER_ADDRESS',
+            amount: 1000000,
+            suggestedParams: await algodClient.getTransactionParams().do()
+          })
+          const signedTxns = await signTransactions([txn])
+          console.log('Transaction signed!')
+        } catch (error) {
+          console.error('Signing failed:', error)
+        }
+      }
+
+      if (!activeAccount) {
+        return <button onClick={handleConnect}>Connect Wallet</button>
+      }
+
+      return (
+        <div>
+          <p>Connected: {activeAccount.name}</p>
+          <button onClick={handleDisconnect}>Disconnect</button>
+          <button onClick={handleSign}>Sign Transaction</button>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Vue">
+    ```vue
+    <script setup lang="ts">
+    import { useWallet, WalletId } from '@txnlab/use-wallet-vue'
+    import algosdk from 'algosdk'
+
+    const {
+      activeAccount,
+      wallets,
+      signTransactions,
+      algodClient
+    } = useWallet()
+
+    const handleConnect = async () => {
+      const pera = wallets.value.find((w) => w.id === WalletId.PERA)
+      if (!pera) return
+
+      try {
+        await pera.connect()
+      } catch (error) {
+        console.error('Connection failed:', error)
+      }
+    }
+
+    const handleDisconnect = async () => {
+      const pera = wallets.value.find((w) => w.id === WalletId.PERA)
+      if (!pera) return
+
+      try {
+        await pera.disconnect()
+      } catch (error) {
+        console.error('Disconnect failed:', error)
+      }
+    }
+
+    const handleSign = async () => {
+      try {
+        const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+          from: activeAccount.value!.address,
+          to: 'RECEIVER_ADDRESS',
+          amount: 1000000,
+          suggestedParams: await algodClient.value.getTransactionParams().do()
+        })
+        const signedTxns = await signTransactions([txn])
+        console.log('Transaction signed!')
+      } catch (error) {
+        console.error('Signing failed:', error)
+      }
+    }
+    </script>
+
+    <template>
+      <div>
+        <button v-if="!activeAccount" @click="handleConnect">
+          Connect Wallet
+        </button>
+        <template v-else>
+          <p>Connected: {{ activeAccount.name }}</p>
+          <button @click="handleDisconnect">Disconnect</button>
+          <button @click="handleSign">Sign Transaction</button>
+        </template>
+      </div>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="Solid">
+    ```tsx
+    import { useWallet, WalletId } from '@txnlab/use-wallet-solid'
+    import { Show } from 'solid-js'
+    import algosdk from 'algosdk'
+
+    function WalletComponent() {
+      const {
+        activeAccount,
+        wallets,
+        signTransactions,
+        algodClient
+      } = useWallet()
+
+      const handleConnect = async () => {
+        const pera = wallets().find((w) => w.id === WalletId.PERA)
+        if (!pera) return
+
+        try {
+          await pera.connect()
+        } catch (error) {
+          console.error('Connection failed:', error)
+        }
+      }
+
+      const handleDisconnect = async () => {
+        const pera = wallets().find((w) => w.id === WalletId.PERA)
+        if (!pera) return
+
+        try {
+          await pera.disconnect()
+        } catch (error) {
+          console.error('Disconnect failed:', error)
+        }
+      }
+
+      const handleSign = async () => {
+        try {
+          const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+            from: activeAccount()!.address,
+            to: 'RECEIVER_ADDRESS',
+            amount: 1000000,
+            suggestedParams: await algodClient().getTransactionParams().do()
+          })
+          const signedTxns = await signTransactions([txn])
+          console.log('Transaction signed!')
+        } catch (error) {
+          console.error('Signing failed:', error)
+        }
+      }
+
+      return (
+        <Show
+          when={activeAccount()}
+          fallback={<button onClick={handleConnect}>Connect Wallet</button>}
+        >
+          <div>
+            <p>Connected: {activeAccount()?.name}</p>
+            <button onClick={handleDisconnect}>Disconnect</button>
+            <button onClick={handleSign}>Sign Transaction</button>
+          </div>
+        </Show>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Svelte">
+    ```svelte
+    <script lang="ts">
+    import { useWallet, WalletId } from '@txnlab/use-wallet-svelte'
+    import algosdk from 'algosdk'
+
+    const {
+      activeAccount,
+      wallets,
+      signTransactions,
+      algodClient
+    } = useWallet()
+
+    const handleConnect = async () => {
+      const pera = wallets.find((w) => w.id === WalletId.PERA)
+      if (!pera) return
+
+      try {
+        await pera.connect()
+      } catch (error) {
+        console.error('Connection failed:', error)
+      }
+    }
+
+    const handleDisconnect = async () => {
+      const pera = wallets.find((w) => w.id === WalletId.PERA)
+      if (!pera) return
+
+      try {
+        await pera.disconnect()
+      } catch (error) {
+        console.error('Disconnect failed:', error)
+      }
+    }
+
+    const handleSign = async () => {
+      try {
+        const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+          from: activeAccount.current!.address,
+          to: 'RECEIVER_ADDRESS',
+          amount: 1000000,
+          suggestedParams: await algodClient.current.getTransactionParams().do()
+        })
+        const signedTxns = await signTransactions([txn])
+        console.log('Transaction signed!')
+      } catch (error) {
+        console.error('Signing failed:', error)
+      }
+    }
+    </script>
+
+    <div>
+      {#if !activeAccount.current}
+        <button onclick={handleConnect}>Connect Wallet</button>
+      {:else}
+        <p>Connected: {activeAccount.current.name}</p>
+        <button onclick={handleDisconnect}>Disconnect</button>
+        <button onclick={handleSign}>Sign Transaction</button>
+      {/if}
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+## Error handling
+
+Wallet operations propagate errors to allow custom error handling:
+
+```typescript
+try {
+  await wallet.connect()
+} catch (error) {
+  // Handle connection error
+  console.error('Connection failed:', error)
+}
+
+try {
+  const signedTxns = await signTransactions([txn])
+} catch (error) {
+  // Handle signing error
+  console.error('Signing failed:', error)
+}
+```
+
+## TypeScript support
+
+All framework adapters provide full TypeScript definitions. State and method types are consistent across frameworks, with framework-specific wrappers (Vue refs, Solid signals, etc.).
+
+```typescript
+import type { 
+  Wallet, 
+  WalletAccount, 
+  WalletId,
+  SignMetadata,
+  SignDataResponse 
+} from '@txnlab/use-wallet-react' // or vue/solid/svelte
+```
