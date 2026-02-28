@@ -1,0 +1,148 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "use-wallet",
+  "projectDescription": "A framework-agnostic wallet integration library for Algorand dApps",
+  "theme": "palm",
+  "primaryColor": "#00D1B2",
+  "lightColor": "#7FDFCC",
+  "darkColor": "#009B7D",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core/wallet-manager",
+              "core/supported-wallets",
+              "core/network-configuration",
+              "core/state-management"
+            ]
+          },
+          {
+            "group": "Framework Adapters",
+            "pages": [
+              "frameworks/react",
+              "frameworks/vue",
+              "frameworks/solid",
+              "frameworks/svelte"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/connect-wallet",
+              "guides/signing-transactions",
+              "guides/signing-data",
+              "guides/switching-networks",
+              "guides/runtime-configuration",
+              "guides/testing-mnemonic",
+              "guides/private-keys",
+              "guides/custom-provider",
+              "guides/migration-v3"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/examples",
+              "resources/algokit-templates"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/wallet-manager",
+              "api/base-wallet",
+              "api/network-config",
+              "api/types"
+            ]
+          },
+          {
+            "group": "Framework Hooks",
+            "pages": [
+              "api/use-wallet",
+              "api/use-network"
+            ]
+          },
+          {
+            "group": "Wallet Providers",
+            "pages": [
+              "api/wallets/pera",
+              "api/wallets/defly",
+              "api/wallets/exodus",
+              "api/wallets/walletconnect",
+              "api/wallets/lute",
+              "api/wallets/kibisis",
+              "api/wallets/kmd",
+              "api/wallets/web3auth",
+              "api/wallets/magic",
+              "api/wallets/mnemonic",
+              "api/wallets/custom"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "api/secure-key"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Framework-agnostic core with React, Vue, SolidJS, and Svelte adapters",
+    "Support for 10+ Algorand wallet providers (Pera, Defly, Exodus, WalletConnect, Lute, Kibisis, KMD, Web3Auth, Magic, Mnemonic)",
+    "Reactive state management using TanStack Store",
+    "Transaction signing with ARC-0001 WalletTransaction format",
+    "Data signing support for authentication flows",
+    "Multi-account and multi-wallet management",
+    "Network switching with custom node configuration",
+    "Session persistence and automatic reconnection",
+    "Secure private key handling with SecureKeyContainer",
+    "TypeScript-first with complete type definitions"
+  ],
+  "publicApiSurface": [
+    "WalletManager",
+    "WalletManagerConfig",
+    "BaseWallet",
+    "NetworkConfig",
+    "NetworkConfigBuilder",
+    "WalletId",
+    "WalletAccount",
+    "WalletTransaction",
+    "SignerTransaction",
+    "useWallet (React/Vue/Solid/Svelte)",
+    "useNetwork (React/Vue/Solid/Svelte)",
+    "WalletProvider (React/Vue/Solid/Svelte)",
+    "PeraWallet",
+    "DeflyWallet",
+    "ExodusWallet",
+    "WalletConnect",
+    "LuteWallet",
+    "KibisisWallet",
+    "KmdWallet",
+    "Web3AuthWallet",
+    "MagicAuth",
+    "MnemonicWallet",
+    "CustomWallet",
+    "SecureKeyContainer",
+    "zeroMemory",
+    "withSecureKey"
+  ]
+}
