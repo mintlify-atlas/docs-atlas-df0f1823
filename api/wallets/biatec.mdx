@@ -1,0 +1,71 @@
+---
+title: BiatecWallet
+description: Deprecated convenience wrapper for WalletConnect with Biatec branding
+---
+
+<Warning>
+**Deprecated**: `BiatecWallet` is deprecated and will be removed in v5. Use `WalletConnect` with the `'biatec'` skin instead.
+</Warning>
+
+## Overview
+
+`BiatecWallet` is a deprecated convenience class that extends `WalletConnect` with Biatec branding. It provides the same functionality as WalletConnect but with pre-configured Biatec-specific metadata.
+
+## Migration
+
+Instead of using `BiatecWallet`, use the `WalletConnect` provider with the `'biatec'` skin:
+
+```typescript
+// Old (deprecated)
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [WalletId.BIATEC]
+})
+```
+
+```typescript
+// New (recommended)
+import { WalletId } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.WALLETCONNECT,
+      options: {
+        projectId: 'YOUR_PROJECT_ID',
+        skin: 'biatec'
+      }
+    }
+  ]
+})
+```
+
+## Why Deprecated?
+
+The separate `BiatecWallet` class was created before the skin system was implemented in WalletConnect. Now that WalletConnect supports customizable skins, maintaining a separate class for each WalletConnect-based wallet is redundant.
+
+The skin system provides the same functionality while:
+- Reducing code duplication
+- Making it easier to add new WalletConnect-based wallets
+- Providing a consistent API across all WalletConnect variants
+
+## Class Definition
+
+```typescript
+export class BiatecWallet extends WalletConnect {
+  constructor(args: WalletConstructor<WalletId.BIATEC>)
+  
+  static defaultMetadata: {
+    name: 'BiatecWallet'
+    icon: string // SVG data URI
+  }
+}
+```
+
+## See Also
+
+- [WalletConnect](/api/wallets/walletconnect) - The recommended provider to use with the Biatec skin
+- [Supported Wallets](/core/supported-wallets) - Complete list of supported wallets
+
+View the Biatec wallet implementation: [biatec.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/biatec.ts)

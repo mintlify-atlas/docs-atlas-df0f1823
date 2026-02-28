@@ -1,0 +1,262 @@
+---
+title: W3Wallet
+description: W3 Wallet browser extension integration for Algorand
+---
+
+## Overview
+
+`W3Wallet` is a browser extension wallet provider for Algorand. It integrates with the W3 Wallet browser extension, providing a native browser-based wallet experience.
+
+The W3 Wallet extension injects a provider into the browser's `window` object, which this integration uses to connect and sign transactions.
+
+## Installation
+
+Install the core library:
+
+<CodeGroup>
+```bash npm
+npm install @txnlab/use-wallet algosdk
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet algosdk
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet algosdk
+```
+</CodeGroup>
+
+<Note>
+Users must have the W3 Wallet browser extension installed to use this provider.
+</Note>
+
+## Basic Usage
+
+```typescript
+import { WalletId, WalletManager } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.W3_WALLET
+  ]
+})
+```
+
+## Configuration
+
+W3Wallet does not require any configuration options:
+
+```typescript
+import { WalletId, WalletManager } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.W3_WALLET,
+      // No options needed
+    }
+  ]
+})
+```
+
+## Features
+
+### Browser Extension Integration
+
+W3Wallet integrates with the browser extension through the injected provider:
+
+```typescript
+interface W3WalletProvider {
+  isConnected: () => Promise<boolean>
+  account: () => Promise<WalletAccount>
+  signTxns: (transactions: WalletTransaction[]) => Promise<(string | null)[]>
+}
+```
+
+The provider is accessible at `window.w3walletAlgorand`.
+
+### Single Account
+
+W3 Wallet currently supports a single active account at a time. When connecting, one account will be returned.
+
+### Session Persistence
+
+W3 Wallet maintains its own session state through the browser extension. The connection status persists across page reloads.
+
+## Methods
+
+### connect()
+
+Initiates the connection flow with W3 Wallet. This will prompt the user to approve the connection in the browser extension.
+
+```typescript
+const accounts = await w3Wallet.connect()
+```
+
+**Returns**: `Promise<WalletAccount[]>` - Array containing the connected account
+
+### disconnect()
+
+Disconnects from W3 Wallet and clears the session.
+
+```typescript
+await w3Wallet.disconnect()
+```
+
+**Returns**: `Promise<void>`
+
+### resumeSession()
+
+Attempts to restore a previous session with W3 Wallet.
+
+```typescript
+await w3Wallet.resumeSession()
+```
+
+**Returns**: `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using W3 Wallet. Supports both `algosdk.Transaction` objects and raw `Uint8Array` encoded transactions.
+
+```typescript
+const signedTxns = await w3Wallet.signTransactions(txnGroup, indexesToSign)
+```
+
+<ParamField path="txnGroup" type="algosdk.Transaction[] | Uint8Array[]" required>
+  Array of transactions to sign. Can be Transaction objects or encoded transaction bytes.
+</ParamField>
+
+<ParamField path="indexesToSign" type="number[]">
+  Indexes of transactions to sign. If not provided, all transactions will be signed.
+</ParamField>
+
+**Returns**: `Promise<(Uint8Array | null)[]>` - Array of signed transactions
+
+### transactionSigner()
+
+Returns a transaction signer compatible with `algosdk.AtomicTransactionComposer`.
+
+```typescript
+const atc = new algosdk.AtomicTransactionComposer()
+atc.addTransaction({
+  txn: transaction,
+  signer: w3Wallet.transactionSigner
+})
+```
+
+**Returns**: `algosdk.TransactionSigner`
+
+## Platform Support
+
+<Note>
+W3 Wallet is a browser extension and only works in desktop web browsers.
+</Note>
+
+| Platform | Supported |
+|----------|-----------|
+| Desktop browsers | ✅ Yes (with extension) |
+| Mobile browsers | ❌ No |
+| Node.js | ❌ No |
+
+## Detection
+
+Check if W3 Wallet is available in the browser:
+
+```typescript
+const isAvailable = typeof window !== 'undefined' && 
+  'w3walletAlgorand' in window
+
+if (!isAvailable) {
+  console.log('Please install the W3 Wallet browser extension')
+}
+```
+
+## Example Usage
+
+### React
+
+```tsx
+import { useWallet } from '@txnlab/use-wallet-react'
+
+function WalletConnect() {
+  const { wallets } = useWallet()
+  const w3Wallet = wallets.find(w => w.id === 'w3-wallet')
+
+  const handleConnect = async () => {
+    try {
+      await w3Wallet?.connect()
+    } catch (error) {
+      console.error('Failed to connect:', error)
+    }
+  }
+
+  return (
+    <button onClick={handleConnect}>
+      Connect W3 Wallet
+    </button>
+  )
+}
+```
+
+### Transaction Signing
+
+```typescript
+import algosdk from 'algosdk'
+
+const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  from: w3Wallet.activeAccount?.address!,
+  to: 'RECEIVER_ADDRESS',
+  amount: 1000000,
+  suggestedParams: await algodClient.getTransactionParams().do()
+})
+
+const signedTxns = await w3Wallet.signTransactions([txn])
+const { txId } = await algodClient.sendRawTransaction(signedTxns[0]!).do()
+```
+
+## Error Handling
+
+```typescript
+try {
+  await w3Wallet.connect()
+} catch (error) {
+  if (error instanceof Error) {
+    if (error.message.includes('not installed')) {
+      console.log('Please install W3 Wallet extension')
+    } else {
+      console.error('Connection error:', error.message)
+    }
+  }
+}
+```
+
+## Class Definition
+
+```typescript
+export class W3Wallet extends BaseWallet {
+  constructor(args: WalletConstructor<WalletId.W3_WALLET>)
+  
+  static defaultMetadata: {
+    name: 'W3 Wallet'
+    icon: string // SVG data URI
+  }
+  
+  connect(): Promise<WalletAccount[]>
+  disconnect(): Promise<void>
+  resumeSession(): Promise<void>
+  signTransactions<T extends algosdk.Transaction[] | Uint8Array[]>(
+    txnGroup: T | T[],
+    indexesToSign?: number[]
+  ): Promise<(Uint8Array | null)[]>
+}
+```
+
+## See Also
+
+- [BaseWallet](/api/base-wallet) - Base class for all wallet providers
+- [Supported Wallets](/core/supported-wallets) - Complete list of supported wallets
+- [Signing Transactions](/guides/signing-transactions) - Guide to signing transactions
+
+View the W3 Wallet implementation: [w3wallet.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/w3wallet.ts)

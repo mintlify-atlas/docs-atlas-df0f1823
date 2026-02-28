@@ -1,0 +1,175 @@
+---
+title: DeflyWebWallet
+description: Web-based Defly Wallet integration using ARC-0027 standard
+---
+
+## Overview
+
+`DeflyWebWallet` is a web-based wallet provider that implements the ARC-0027 (AVM Web Provider) standard. It extends the `AVMProvider` base class to provide integration with Defly's web wallet.
+
+Unlike the mobile-focused `DeflyWallet` which uses WalletConnect, `DeflyWebWallet` connects directly through the browser using the AVM Web Provider standard.
+
+## Installation
+
+Install the required peer dependencies:
+
+<CodeGroup>
+```bash npm
+npm install @txnlab/use-wallet @agoralabs-sh/avm-web-provider algosdk
+```
+
+```bash yarn
+yarn add @txnlab/use-wallet @agoralabs-sh/avm-web-provider algosdk
+```
+
+```bash pnpm
+pnpm add @txnlab/use-wallet @agoralabs-sh/avm-web-provider algosdk
+```
+</CodeGroup>
+
+## Basic Usage
+
+```typescript
+import { WalletId, WalletManager } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.DEFLY_WEB
+  ]
+})
+```
+
+## Configuration
+
+`DeflyWebWallet` does not require any configuration options. It automatically detects and connects to the Defly Web Wallet if available in the browser.
+
+```typescript
+import { WalletId, WalletManager } from '@txnlab/use-wallet'
+
+const walletManager = new WalletManager({
+  wallets: [
+    {
+      id: WalletId.DEFLY_WEB,
+      // No options needed
+    }
+  ]
+})
+```
+
+## Features
+
+### ARC-0027 Compliance
+
+DeflyWebWallet implements the ARC-0027 standard for AVM Web Providers, which provides:
+
+- Standardized connection flow
+- Transaction signing with user approval
+- Account access management
+- Network detection and validation
+
+### Provider Detection
+
+The wallet automatically detects the presence of the Defly Web Provider in the browser:
+
+```typescript
+const DEFLY_WEB_PROVIDER_ID = '95426e60-5f2e-49e9-b912-c488577be962'
+```
+
+### Session Management
+
+Sessions are managed through the AVM Web Provider interface and persist across page reloads.
+
+## Methods
+
+DeflyWebWallet inherits all methods from `AVMProvider` and `BaseWallet`.
+
+### connect()
+
+Initiates the connection flow with the Defly Web Wallet.
+
+```typescript
+const accounts = await deflyWebWallet.connect()
+```
+
+**Returns**: `Promise<WalletAccount[]>`
+
+### disconnect()
+
+Disconnects from the Defly Web Wallet and clears the session.
+
+```typescript
+await deflyWebWallet.disconnect()
+```
+
+**Returns**: `Promise<void>`
+
+### signTransactions()
+
+Signs transactions using the Defly Web Wallet.
+
+```typescript
+const signedTxns = await deflyWebWallet.signTransactions(txnGroup, indexesToSign)
+```
+
+<ParamField path="txnGroup" type="algosdk.Transaction[] | Uint8Array[]" required>
+  Array of transactions to sign
+</ParamField>
+
+<ParamField path="indexesToSign" type="number[]">
+  Indexes of transactions to sign (optional, defaults to all)
+</ParamField>
+
+**Returns**: `Promise<(Uint8Array | null)[]>`
+
+## Platform Support
+
+<Note>
+DeflyWebWallet requires the Defly Web Wallet browser extension or web application to be installed and accessible.
+</Note>
+
+| Platform | Supported |
+|----------|-----------|
+| Desktop browsers | ✅ Yes |
+| Mobile browsers | ✅ Yes (with web app) |
+| Node.js | ❌ No |
+
+## Error Handling
+
+DeflyWebWallet can throw ARC-0027 standard errors:
+
+- `MethodCanceledError` - User cancelled the operation
+- `MethodNotSupportedError` - Method not supported for the network
+- `MethodTimedOutError` - Operation timed out (>= 3 minutes)
+- `NetworkNotSupportedError` - Network not supported
+- `UnknownError` - Unexpected error occurred
+
+```typescript
+try {
+  await deflyWebWallet.connect()
+} catch (error) {
+  if (error.name === 'MethodCanceledError') {
+    console.log('User cancelled connection')
+  }
+}
+```
+
+## Class Definition
+
+```typescript
+export class DeflyWebWallet extends AVMProvider {
+  constructor(args: WalletConstructor<WalletId.DEFLY_WEB>)
+  
+  static defaultMetadata: {
+    name: 'Defly Web Wallet'
+    icon: string // SVG data URI
+  }
+}
+```
+
+## See Also
+
+- [DeflyWallet](/api/wallets/defly) - Mobile-focused Defly integration using WalletConnect
+- [BaseWallet](/api/base-wallet) - Base class for all wallet providers
+- [Supported Wallets](/core/supported-wallets) - Complete list of supported wallets
+
+View the Defly Web wallet implementation: [defly-web.ts](https://github.com/TxnLab/use-wallet/blob/main/packages/use-wallet/src/wallets/defly-web.ts)

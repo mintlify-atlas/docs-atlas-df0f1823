@@ -247,8 +247,24 @@ registerSkin({
 
 ### Biatec
 
+<Warning>
+**Deprecated**: `BiatecWallet` is deprecated and will be removed in v5. Use `WalletConnect` with the `'biatec'` skin instead.
+</Warning>
+
 <ParamField path="WalletId.BIATEC" type="biatec">
   Convenience wrapper for WalletConnect with Biatec branding. Equivalent to using `WalletId.WALLETCONNECT` with `skin: 'biatec'`.
+
+  **Migration:**
+  ```typescript
+  // Use this instead:
+  {
+    id: WalletId.WALLETCONNECT,
+    options: {
+      projectId: 'YOUR_PROJECT_ID',
+      skin: 'biatec'
+    }
+  }
+  ```
 
   **Options:** Same as `WalletConnectOptions` (projectId required)
 
@@ -261,14 +277,11 @@ registerSkin({
 ### W3 Wallet
 
 <ParamField path="WalletId.W3_WALLET" type="w3-wallet">
-  W3 Wallet integration.
+  W3 Wallet browser extension integration.
 
   **Options:** None
 
-  **Peer dependency:**
-  ```bash
-  npm install @w3block/w3-wallet-js-sdk
-  ```
+  **Note:** No additional dependencies required. Users must have the W3 Wallet browser extension installed.
 </ParamField>
 
 ## Browser extension wallets
@@ -319,13 +332,13 @@ registerSkin({
 ### Defly Web
 
 <ParamField path="WalletId.DEFLY_WEB" type="defly-web">
-  Defly web wallet integration (iframe-based).
+  Defly web wallet integration using ARC-0027 (AVM Web Provider) standard.
 
   **Options:** None
 
   **Peer dependency:**
   ```bash
-  npm install @blockshake/defly-wallet
+  npm install @agoralabs-sh/avm-web-provider
   ```
 
   **Example:**
